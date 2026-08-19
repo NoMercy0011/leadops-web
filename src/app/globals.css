@@ -8,6 +8,7 @@
    LeadOps — thème
 
    Palette de marque :
+     #1D3FD1  bleu    — couleur d'information et de lien, issue du logo
      #0F766E  teal    — couleur d'action, reprise du dégradé central du logo
      #2B2D42  navy    — texte principal et navigation, repris du mot « Lead »
      #EDF2F4  clair   — fond d'application
@@ -66,6 +67,9 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-warning-subtle: var(--warning-subtle);
   --color-destructive-subtle: var(--destructive-subtle);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-subtle: var(--info-subtle);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -122,15 +126,27 @@
   --warning-foreground: #ffffff;
   --warning-subtle: #fdf0e3;
 
+  /* Bleu de marque, échantillonné dans le logo. Les bleus d'origine
+     (#0026D8 à #0278FB) sont trop saturés pour de larges aplats d'interface :
+     cette version assombrie reste reconnaissable à 6,9:1 sur le fond. */
+  --info: #1d3fd1;
+  --info-foreground: #ffffff;
+  --info-subtle: #e6ebfc;
+
+  /* Dégradé signature, reprenant la course bleu → teal → vert du logo.
+     Réservé aux surfaces d'accueil, écrans vides et barres de progression :
+     jamais derrière du texte de lecture. */
+  --brand-gradient: linear-gradient(135deg, #1d3fd1 0%, #0f766e 55%, #22a06b 100%);
+
   --border: #cdd5de;
   --input: #cdd5de;
   --ring: #0f766e; /* anneau de focus dans la couleur de marque */
 
   /* Séries de graphiques — à confronter aux règles de dataviz au lot 7 */
   --chart-1: #0f766e;
-  --chart-2: #8fbc8f;
-  --chart-3: #8d99ae;
-  --chart-4: #2b2d42;
+  --chart-2: #1d3fd1;
+  --chart-3: #8fbc8f;
+  --chart-4: #8d99ae;
   --chart-5: #ef233c;
 
   /* Navigation : bandeau navy pleine hauteur, écho direct au mot « Lead »
@@ -179,13 +195,21 @@
   --warning-foreground: #241203;
   --warning-subtle: #3a2a15;
 
+  /* Le bleu de marque s'effondre sur fond sombre : on remonte fortement la
+     luminosité en gardant la teinte du logo. */
+  --info: #8aa4ff;
+  --info-foreground: #101a3a;
+  --info-subtle: #1e2445;
+
+  --brand-gradient: linear-gradient(135deg, #4d6dff 0%, #2dd4bf 55%, #4ade80 100%);
+
   --border: #ffffff1a;
   --input: #ffffff26;
   --ring: #2dd4bf;
 
   --chart-1: #2dd4bf;
-  --chart-2: #8fbc8f;
-  --chart-3: #8d99ae;
+  --chart-2: #8aa4ff;
+  --chart-3: #8fbc8f;
   --chart-4: #a2acc0;
   --chart-5: #ef233c;
 
