@@ -1,26 +1,212 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
+
+/* ---------------------------------------------------------------------------
+   LeadOps — thème
+
+   Palette de marque :
+     #0F766E  teal    — couleur d'action, reprise du dégradé central du logo
+     #2B2D42  navy    — texte principal et navigation, repris du mot « Lead »
+     #EDF2F4  clair   — fond d'application
+     #8D99AE  gris    — bordures, icônes, états inactifs
+     #8FBC8F  sauge   — états positifs (converti, gagné)
+     #EF233C  rouge   — états négatifs (perdu, suppression)
+
+   Trois teintes ont dû être assombries pour rester lisibles : voir les
+   commentaires « dérivé » ci-dessous. Les valeurs d'origine restent utilisées
+   en aplat, où le contraste se joue avec le texte posé dessus et non avec le
+   fond de page.
+--------------------------------------------------------------------------- */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* Sémantique métier, absente du thème shadcn par défaut */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-destructive-subtle: var(--destructive-subtle);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --radius: 0.625rem;
+
+  /* Surfaces : canevas teinté, cartes blanches — la profondeur vient du
+     contraste entre les deux, pas d'ombres portées appuyées. */
+  --background: #edf2f4;
+  --foreground: #2b2d42; /* 11,9:1 sur le fond — confortable en lecture dense */
+  --card: #ffffff;
+  --card-foreground: #2b2d42;
+  --popover: #ffffff;
+  --popover-foreground: #2b2d42;
+
+  /* Action principale */
+  --primary: #0f766e; /* 5,5:1 avec du blanc dessus */
+  --primary-foreground: #ffffff;
+
+  --secondary: #dfe7ea;
+  --secondary-foreground: #2b2d42;
+
+  --muted: #e4eaec;
+  /* dérivé de #8D99AE : l'original ne donne que 2,6:1 sur le fond clair,
+     insuffisant pour du texte. Assombri à 5,3:1 en conservant la teinte. */
+  --muted-foreground: #5a6478;
+
+  --accent: #e3f0ee;
+  --accent-foreground: #0f766e;
+
+  /* dérivé de #EF233C : blanc sur l'original plafonne à 4,2:1, sous le seuil
+     AA. #D90429 est la déclinaison foncée de la même famille — 5,3:1. */
+  --destructive: #d90429;
+  --destructive-foreground: #ffffff;
+  --destructive-subtle: #fde8eb; /* aplat de badge, texte foncé dessus */
+
+  /* dérivé de #8FBC8F, même logique : la sauge d'origine reste l'aplat,
+     sa version foncée porte le texte. */
+  --success: #8fbc8f;
+  --success-foreground: #3f6b45;
+  --success-subtle: #e9f2e9;
+
+  /* AJOUT hors palette : aucune couleur d'alerte n'était fournie, or le
+     domaine en réclame une (relance en retard, abonnement proche
+     d'expiration). Ocre choisi pour cohabiter avec la sauge et le teal. */
+  --warning: #b45309;
+  --warning-foreground: #ffffff;
+  --warning-subtle: #fdf0e3;
+
+  --border: #cdd5de;
+  --input: #cdd5de;
+  --ring: #0f766e; /* anneau de focus dans la couleur de marque */
+
+  /* Séries de graphiques — à confronter aux règles de dataviz au lot 7 */
+  --chart-1: #0f766e;
+  --chart-2: #8fbc8f;
+  --chart-3: #8d99ae;
+  --chart-4: #2b2d42;
+  --chart-5: #ef233c;
+
+  /* Navigation : bandeau navy pleine hauteur, écho direct au mot « Lead »
+     du logo. Texte clair dessus à 13,5:1. */
+  --sidebar: #2b2d42;
+  --sidebar-foreground: #edf2f4;
+  --sidebar-primary: #0f766e;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #3a3d57;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #3f4260;
+  --sidebar-ring: #8fbc8f;
+}
+
+.dark {
+  --background: #1a1b28;
+  --foreground: #edf2f4;
+  --card: #232538;
+  --card-foreground: #edf2f4;
+  --popover: #232538;
+  --popover-foreground: #edf2f4;
+
+  /* Le teal foncé manque de lisibilité sur fond sombre : on remonte la
+     luminosité en gardant la teinte. */
+  --primary: #2dd4bf;
+  --primary-foreground: #10201f;
+
+  --secondary: #2f3247;
+  --secondary-foreground: #edf2f4;
+
+  --muted: #2f3247;
+  --muted-foreground: #a2acc0;
+
+  --accent: #2a3f3d;
+  --accent-foreground: #5eead4;
+
+  --destructive: #ef233c;
+  --destructive-foreground: #ffffff;
+  --destructive-subtle: #3a1a22;
+
+  --success: #8fbc8f;
+  --success-foreground: #1c2b1e;
+  --success-subtle: #24331f;
+
+  --warning: #d98324;
+  --warning-foreground: #241203;
+  --warning-subtle: #3a2a15;
+
+  --border: #ffffff1a;
+  --input: #ffffff26;
+  --ring: #2dd4bf;
+
+  --chart-1: #2dd4bf;
+  --chart-2: #8fbc8f;
+  --chart-3: #8d99ae;
+  --chart-4: #a2acc0;
+  --chart-5: #ef233c;
+
+  --sidebar: #14151f;
+  --sidebar-foreground: #edf2f4;
+  --sidebar-primary: #2dd4bf;
+  --sidebar-primary-foreground: #10201f;
+  --sidebar-accent: #232538;
+  --sidebar-accent-foreground: #edf2f4;
+  --sidebar-border: #ffffff1a;
+  --sidebar-ring: #2dd4bf;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }
