@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verification:
+    name: Lint + Types + Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # `next typegen` génère les types de routes (LayoutProps, PageProps…)
+      # que tsc ne peut pas résoudre autrement. Le script les produit d'abord.
+      - name: Vérification des types
+        run: npm run typecheck
+
+      - name: Build
+        env:
+          API_BASE_URL: http://localhost:8000/api/v1
+          SESSION_SECRET: valeur-factice-pour-le-build-ci-uniquement
+        run: npm run build
