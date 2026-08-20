@@ -1,0 +1,146 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { ChevronLeft } from "lucide-react";
+
+import { CompanyActions } from "./company-actions";
+import { CompanyStatusBadge } from "@/components/company-status-badge";
+import { UsageMeter } from "@/components/usage-meter";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { ApiError } from "@/lib/api";
+import { getCompany, getCompanyUsage, listPlans } from "@/lib/admin";
+import { requireUser } from "@/lib/dal";
+
+export const metadata: Metadata = {
+  title: "Fiche entreprise",
+};
+
+export default async function FicheEntreprisePage({
+  params,
+}: PageProps<"/back-office/entreprises/[id]">) {
+  const user = await requireUser();
+
+  if (user.role !== "super_admin") {
+    notFound();
+  }
+
+  const { id } = await params;
+  const companyId = Number(id);
+
+  if (!Number.isInteger(companyId)) {
+    notFound();
+  }
+
+  let company, usage, plans;
+
+  try {
+    [company, usage, plans] = await Promise.all([
+      getCompany(companyId),
+      getCompanyUsage(companyId),
+      listPlans(),
+    ]);
+  } catch (error) {
+    // 404 comme 403 mènent à la même page : ne pas distinguer les deux évite
+    // de confirmer l'existence d'une entreprise à qui n'y a pas accès.
+    if (error instanceof ApiError && [403, 404].includes(error.status)) {
+      notFound();
+    }
+    throw error;
+  }
+
+  return (
+    <div className="space-y-6">
+      <Button asChild variant="ghost" size="sm" className="-ml-2">
+        <Link href="/back-office/entreprises">
+          <ChevronLeft className="size-4" />
+          Toutes les entreprises
+        </Link>
+      </Button>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">
+          {company.name}
+        </h1>
+        <CompanyStatusBadge company={company} />
+      </div>
+
+      {!company.allows_writes ? (
+        <div className="bg-warning-subtle text-warning rounded-md px-4 py-3 text-sm">
+          Cette entreprise ne peut plus enregistrer de modifications. La
+          consultation et l&apos;export lui restent ouverts — couper la lecture
+          reviendrait à retenir ses données.
+        </div>
+      ) : null}
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Consommation</CardTitle>
+            <CardDescription>
+              Face aux plafonds du plan «{" "}
+              {company.subscription?.plan?.name ?? "—"} ».
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {(
+              Object.entries(usage.usage) as [
+                keyof typeof usage.usage,
+                (typeof usage.usage)[keyof typeof usage.usage],
+              ][]
+            ).map(([resource, entry]) => (
+              <UsageMeter key={resource} resource={resource} entry={entry} />
+            ))}
+            <p className="text-muted-foreground border-t pt-4 text-xs">
+              Projets et prospects restent à zéro : leurs compteurs sont
+              branchés aux lots 3 et 4.
+            </p>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Abonnement</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">État</span>
+                <span>{company.subscription?.effective_status_label ?? "—"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Échéance</span>
+                <span>
+                  {company.subscription?.expires_at
+                    ? new Date(
+                        company.subscription.expires_at,
+                      ).toLocaleDateString("fr-FR")
+                    : "Sans échéance"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Fuseau</span>
+                <span>{company.timezone}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Administration</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CompanyActions company={company} plans={plans} />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
