@@ -26,6 +26,8 @@ import { requireUser } from "@/lib/dal";
 import { formatDate, formatDistance } from "@/lib/format";
 import { getProject, listCompanyUsers } from "@/lib/projects";
 import { getProspect, listActivities } from "@/lib/prospects";
+import { getQuestionnaire } from "@/lib/questionnaire";
+import { QuestionnaireForm } from "./questionnaire-form";
 
 export const metadata: Metadata = {
   title: "Prospect",
@@ -57,7 +59,7 @@ export default async function FicheProspectPage({
 
   const encadrement = user.role === "admin_client" || user.role === "manager";
 
-  const [activites, projet, utilisateurs] = await Promise.all([
+  const [activites, projet, utilisateurs, questionnaire] = await Promise.all([
     listActivities(prospectId),
     // Le projet fournit le pipeline : la liste des étapes proposées doit être
     // celle de *son* projet, aucune autre.
@@ -65,6 +67,7 @@ export default async function FicheProspectPage({
     encadrement
       ? listCompanyUsers()
       : Promise.resolve({ data: [], meta: { current_page: 1, last_page: 1, total: 0 } }),
+    getQuestionnaire(prospectId),
   ]);
 
   const fuseau = user.company?.timezone;
@@ -107,6 +110,24 @@ export default async function FicheProspectPage({
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Qualification</CardTitle>
+              <CardDescription>
+                Questions propres au projet « {projet.name} ». Elles se
+                configurent depuis la fiche du projet, sans déploiement.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <QuestionnaireForm
+                prospectId={prospect.id}
+                questions={questionnaire.questions}
+                answers={questionnaire.answers}
+                editable
+              />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Historique</CardTitle>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { PipelineEditor } from "./pipeline-editor";
+import { QuestionnaireBuilder } from "./questionnaire-builder";
 import { TeamEditor } from "./team-editor";
 import { LienRetour } from "@/components/lien-retour";
 import { Notice } from "@/components/notice";
@@ -18,6 +19,7 @@ import { ApiError } from "@/lib/api";
 import { requireUser } from "@/lib/dal";
 import { formatDate } from "@/lib/format";
 import { getProject, listCompanyUsers } from "@/lib/projects";
+import { listQuestions } from "@/lib/questionnaire";
 import type { ProjectStatus } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -57,7 +59,10 @@ export default async function FicheProjetPage({
   }
 
   // La liste des candidats n'a de sens que pour qui peut modifier l'équipe.
-  const candidats = editable ? (await listCompanyUsers()).data : [];
+  const [candidats, questions] = await Promise.all([
+    editable ? listCompanyUsers().then((page) => page.data) : Promise.resolve([]),
+    listQuestions(projectId),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -104,6 +109,23 @@ export default async function FicheProjetPage({
         </Card>
 
         <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Questionnaire</CardTitle>
+              <CardDescription>
+                Questions de qualification posées sur chaque prospect de ce
+                projet. Elles se configurent ici, sans déploiement.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <QuestionnaireBuilder
+                projectId={projet.id}
+                questions={questions}
+                editable={editable}
+              />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Équipe</CardTitle>
