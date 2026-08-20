@@ -14,9 +14,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { ChampSelect, ChampTexte, ChampZone } from "@/components/form-fields";
+import { FieldGroup } from "@/components/ui/field";
 import { Inbox } from "lucide-react";
 import {
   Table,
@@ -241,8 +241,8 @@ export default function ChartePage() {
       </Section>
 
       <Section
-        titre="Formulaire"
-        description="Les champs passent par Field et non par un Label posé à côté d un Input : shadcn a retiré le composant form au profit de field, et le questionnaire dynamique du lot 5 générera ses champs depuis ce même registre. L état d erreur fait partie du composant, il n est pas ajouté après coup."
+        titre="Champs de formulaire"
+        description="Un seul jeu de champs pour tout le produit — ChampTexte, ChampSelect, ChampZone — construits sur Field, que shadcn a substitué à form. L étiquette, l aide, l erreur et le câblage aria-describedby font partie du composant : ils ne s ajoutent pas après coup, et ne peuvent donc pas être oubliés. Le questionnaire dynamique du lot 5 générera ses onze types de questions depuis ce registre."
       >
         <Card className="max-w-md">
           <CardHeader>
@@ -251,23 +251,38 @@ export default function ChartePage() {
               Les champs réels seront dérivés du questionnaire du projet.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Field>
-              <FieldLabel htmlFor="nom">Nom</FieldLabel>
-              <Input id="nom" placeholder="Dupont" />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="email-prospect">Email</FieldLabel>
-              <Input
-                id="email-prospect"
+          <CardContent>
+            <FieldGroup>
+              <ChampTexte id="charte-nom" label="Nom" placeholder="Dupont" />
+
+              <ChampTexte
+                id="charte-email"
+                label="Adresse email"
                 type="email"
                 placeholder="jean@example.com"
-                aria-invalid
+                erreur="Adresse email invalide."
               />
-              <FieldError>Adresse email invalide.</FieldError>
-            </Field>
-            <Separator />
-            <Button className="w-full">Créer le prospect</Button>
+
+              <ChampSelect
+                id="charte-source"
+                label="Source"
+                aide="La liste déroulante est native : sa valeur doit arriver dans le FormData d une Server Action."
+              >
+                <option>Salon</option>
+                <option>Recommandation</option>
+                <option>Publicité</option>
+              </ChampSelect>
+
+              <ChampZone
+                id="charte-notes"
+                label="Notes"
+                rows={2}
+                optionnel
+              />
+
+              <Separator />
+              <Button className="w-full">Créer le prospect</Button>
+            </FieldGroup>
           </CardContent>
         </Card>
       </Section>

@@ -5,10 +5,10 @@ import { ChevronDown, ChevronUp, LoaderCircle, Plus, Trash2 } from "lucide-react
 import { toast } from "sonner";
 
 import { addStage, deleteStage, reorderStages } from "../actions";
+import { ChampSelect, ChampTexte } from "@/components/form-fields";
 import { COULEURS_ETAPE, StageChip } from "@/components/stage-chip";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FieldGroup } from "@/components/ui/field";
 import type { PipelineStage } from "@/lib/types";
 
 /**
@@ -137,34 +137,32 @@ export function PipelineEditor({
             }}
             className="border-border space-y-3 rounded-lg border border-dashed p-3"
           >
-            <div className="space-y-2">
-              <Label htmlFor="stage-name">Nom de l&apos;étape</Label>
-              <Input
-                id="stage-name"
-                name="name"
+            <FieldGroup>
+              <ChampTexte
+                id="name"
+                label="Nom de l'étape"
                 placeholder="Étude médicale"
                 required
                 autoFocus
               />
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="stage-color">Couleur</Label>
-              {/* Jeu restreint : un sélecteur libre produirait des pipelines
-                  criards et des teintes illisibles sur l'un des deux thèmes. */}
-              <select
-                id="stage-color"
-                name="color"
+              <ChampSelect
+                id="color"
+                label="Couleur"
                 defaultValue="slate"
-                className="border-input bg-background focus-visible:ring-ring h-9 w-full rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
+                // Jeu restreint plutôt que sélecteur libre : les teintes sont
+                // définies par la charte et validées sur les deux thèmes. Un
+                // choix libre produirait des pipelines criards et des étapes
+                // illisibles en mode sombre.
+                aide="Repère visuel dans le kanban. Elle ne porte aucune signification métier."
               >
                 {COULEURS_ETAPE.map((couleur) => (
                   <option key={couleur.value} value={couleur.value}>
                     {couleur.label}
                   </option>
                 ))}
-              </select>
-            </div>
+              </ChampSelect>
+            </FieldGroup>
 
             <div className="flex gap-2">
               <Button type="submit" size="sm" disabled={pending}>

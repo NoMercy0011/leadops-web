@@ -44,6 +44,15 @@ interface ApiOptions extends Omit<RequestInit, "body"> {
    * bloc `meta` porte le nombre de pages et serait perdu au déballage.
    */
   unwrap?: boolean;
+  /**
+   * Transmettre `body` tel quel plutôt que de le sérialiser en JSON.
+   *
+   * Sert à l'envoi de fichiers : un `FormData` doit partir intact, et son
+   * `Content-Type` doit être posé par le runtime, qui seul connaît la frontière
+   * multipart. Le fixer à la main produit une requête que le serveur ne sait
+   * pas découper.
+   */
+  rawBody?: boolean;
 }
 
 /**
@@ -55,7 +64,14 @@ interface ApiOptions extends Omit<RequestInit, "body"> {
  */
 export async function apiFetch<T>(
   path: string,
-  { body, anonymous = false, unwrap = true, headers, ...init }: ApiOptions = {},
+  {
+    body,
+    anonymous = false,
+    unwrap = true,
+    rawBody = false,
+    headers,
+    ...init
+  }: ApiOptions = {},
 ): Promise<T> {
   const token = anonymous ? null : await getSessionToken();
 
@@ -63,11 +79,18 @@ export async function apiFetch<T>(
     ...init,
     headers: {
       Accept: "application/json",
-      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...(body !== undefined && !rawBody
+        ? { "Content-Type": "application/json" }
+        : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body:
+      body === undefined
+        ? undefined
+        : rawBody
+          ? (body as BodyInit)
+          : JSON.stringify(body),
     // Les données métier sont cloisonnées par utilisateur : les mettre en cache
     // exposerait la réponse d'une entreprise à une autre.
     cache: "no-store",

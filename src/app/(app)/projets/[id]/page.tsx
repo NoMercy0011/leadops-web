@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
 
 import { PipelineEditor } from "./pipeline-editor";
 import { TeamEditor } from "./team-editor";
+import { LienRetour } from "@/components/lien-retour";
+import { Notice } from "@/components/notice";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge, type Tone } from "@/components/status-badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -62,12 +61,7 @@ export default async function FicheProjetPage({
 
   return (
     <div className="space-y-6">
-      <Button asChild variant="ghost" size="sm" className="-ml-2">
-        <Link href="/projets">
-          <ChevronLeft className="size-4" />
-          Tous les projets
-        </Link>
-      </Button>
+      <LienRetour href="/projets" label="Tous les projets" />
 
       <PageHeader
         titre={projet.name}
@@ -86,10 +80,9 @@ export default async function FicheProjetPage({
       />
 
       {!projet.accepts_new_prospects ? (
-        <div className="bg-warning-subtle text-warning-subtle-foreground rounded-md px-4 py-3 text-sm">
-          Ce projet n&apos;accepte plus de nouveaux prospects. Les données
-          existantes restent consultables et exportables.
-        </div>
+        <Notice variant="warning" titre="Projet fermé aux nouveaux prospects">
+          Les données existantes restent consultables et exportables.
+        </Notice>
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-3">

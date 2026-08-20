@@ -6,9 +6,11 @@ import { LoaderCircle, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { createProject, type ActionState } from "./actions";
+import { ChampSelect, ChampTexte, ChampZone } from "@/components/form-fields";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -16,9 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { FieldGroup } from "@/components/ui/field";
 import type { Variant } from "@/lib/types";
 
 const INITIAL: ActionState = {};
@@ -27,8 +27,10 @@ function SubmitButton() {
   const { pending } = useFormStatus();
 
   return (
-    <Button type="submit" disabled={pending}>
-      {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
+    <Button type="submit" disabled={pending} aria-busy={pending}>
+      {pending ? (
+        <LoaderCircle className="size-4 animate-spin" aria-hidden />
+      ) : null}
       Créer le projet
     </Button>
   );
@@ -66,7 +68,7 @@ export function CreateProjectDialog({ variantes }: { variantes: Variant[] }) {
         </Button>
       </DialogTrigger>
 
-      <DialogContent>
+      <DialogContent className="shadow-dialog sm:max-w-lg">
         <form action={formAction}>
           <DialogHeader>
             <DialogTitle>Nouveau projet</DialogTitle>
@@ -76,70 +78,68 @@ export function CreateProjectDialog({ variantes }: { variantes: Variant[] }) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nom du projet</Label>
-              <Input
-                id="name"
-                name="name"
-                placeholder="Assurance Santé"
-                required
-                aria-invalid={Boolean(state.fieldErrors?.name)}
-              />
-              {state.fieldErrors?.name ? (
-                <p className="text-destructive text-sm">
-                  {state.fieldErrors.name}
-                </p>
-              ) : null}
-            </div>
+          <FieldGroup className="py-4">
+            <ChampTexte
+              id="name"
+              label="Nom du projet"
+              placeholder="Assurance Santé"
+              required
+              autoFocus
+              erreur={state.fieldErrors?.name}
+            />
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="product">Produit</Label>
-                <Input
-                  id="product"
-                  name="product"
-                  placeholder="Assurance Santé Premium"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="target">Cible</Label>
-                <Input id="target" name="target" placeholder="Particuliers" />
-              </div>
+              <ChampTexte
+                id="product"
+                label="Produit"
+                placeholder="Assurance Santé Premium"
+                optionnel
+                erreur={state.fieldErrors?.product}
+              />
+              <ChampTexte
+                id="target"
+                label="Cible"
+                placeholder="Particuliers"
+                optionnel
+                erreur={state.fieldErrors?.target}
+              />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="variant_id">Variante</Label>
-              {/* Un <select> natif : le composant Select de shadcn ne pose pas
-                  de champ de formulaire natif, et sa valeur n'arriverait pas
-                  dans le FormData de la Server Action. */}
-              <select
-                id="variant_id"
-                name="variant_id"
-                defaultValue=""
-                className="border-input bg-background focus-visible:ring-ring h-9 w-full rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
-              >
-                <option value="">Sans variante</option>
-                {variantes.map((variante) => (
-                  <option key={variante.id} value={variante.id}>
-                    {variante.name}
-                  </option>
-                ))}
-              </select>
-              {state.fieldErrors?.variant_id ? (
-                <p className="text-destructive text-sm">
-                  {state.fieldErrors.variant_id}
-                </p>
-              ) : null}
-            </div>
+            <ChampSelect
+              id="variant_id"
+              label="Variante"
+              defaultValue=""
+              optionnel
+              // La variante est un axe de reporting (décision §10.4) : c'est
+              // pour cela qu'elle se choisit dans une liste et ne se saisit
+              // pas. « Particulier » et « particuliers » feraient deux lignes
+              // distinctes dans les rapports, sans que rien ne signale l'écart.
+              aide="Axe de comparaison dans les rapports. Se gère depuis Paramètres › Variantes."
+              erreur={state.fieldErrors?.variant_id}
+            >
+              <option value="">Sans variante</option>
+              {variantes.map((variante) => (
+                <option key={variante.id} value={variante.id}>
+                  {variante.name}
+                </option>
+              ))}
+            </ChampSelect>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea id="description" name="description" rows={3} />
-            </div>
-          </div>
+            <ChampZone
+              id="description"
+              label="Description"
+              rows={3}
+              optionnel
+              erreur={state.fieldErrors?.description}
+            />
+          </FieldGroup>
 
           <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="ghost">
+                Annuler
+              </Button>
+            </DialogClose>
             <SubmitButton />
           </DialogFooter>
         </form>
