@@ -3,14 +3,6 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 
 import { LoginForm } from "./login-form";
-import { ModeToggle } from "@/components/mode-toggle";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/dal";
 
 export const metadata: Metadata = {
@@ -24,39 +16,31 @@ export default async function ConnexionPage() {
   }
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-6 py-12">
-      <div className="absolute top-6 right-6">
-        <ModeToggle />
+    <div className="space-y-8">
+      {/* Le logo n'apparaît qu'en dessous de `lg` : au-dessus, il est déjà
+          présent dans la colonne de marque, et le répéter ferait doublon. */}
+      <Image
+        src="/logo_large.png"
+        alt="LeadOps"
+        width={280}
+        height={93}
+        priority
+        className="h-auto w-44 dark:brightness-110 lg:hidden"
+      />
+
+      <div className="space-y-2">
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">
+          Connexion
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          Accédez à votre espace de prospection.
+        </p>
       </div>
 
-      <div className="w-full max-w-sm space-y-6">
-        <div className="flex flex-col items-center gap-4">
-          <Image
-            src="/logo_large.png"
-            alt="LeadOps"
-            width={280}
-            height={93}
-            priority
-            className="h-auto w-52 dark:brightness-110"
-          />
-          <div
-            className="h-1 w-24 rounded-full"
-            style={{ backgroundImage: "var(--brand-gradient)" }}
-          />
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Connexion</CardTitle>
-            <CardDescription>
-              Accédez à votre espace de prospection.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <LoginForm />
-          </CardContent>
-        </Card>
-      </div>
-    </main>
+      {/* Pas de carte autour du formulaire. Sur un écran qui ne contient que
+          lui, la carte n'a rien à séparer : elle ajoute une bordure et une
+          surface de plus sans rien structurer. */}
+      <LoginForm />
+    </div>
   );
 }
