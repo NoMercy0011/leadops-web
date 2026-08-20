@@ -175,6 +175,55 @@ export function formatQuota(valeur: number | null | undefined): string {
     : formatNombre(valeur);
 }
 
+/** 14:30 — heure seule, pour les créneaux du calendrier. */
+export function formatHeure(
+  valeur: string | null | undefined,
+  { timeZone }: OptionsDate = {},
+): string {
+  const date = analyser(valeur);
+
+  if (!date) {
+    return "—";
+  }
+
+  return formatter({ hour: "2-digit", minute: "2-digit" }, timeZone).format(date);
+}
+
+/**
+ * Clé de regroupement par journée **locale** : « 2026-08-20 ».
+ *
+ * C'est le pendant front de `TimezoneResolver::dayBounds`. Un
+ * `date.toISOString().slice(0, 10)` donnerait la journée UTC : pour une
+ * entreprise à +03, un rendez-vous à 01h00 locale serait rangé la veille et
+ * disparaîtrait de sa colonne. L'erreur ne lève rien — la case est simplement
+ * vide.
+ *
+ * `en-CA` produit nativement le format ISO, ce qui évite de recomposer la
+ * chaîne à partir des parties.
+ */
+export function cleJour(
+  valeur: string | Date | null | undefined,
+  { timeZone }: OptionsDate = {},
+): string {
+  const date = valeur instanceof Date ? valeur : analyser(valeur);
+
+  if (!date) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: timeZone ?? FUSEAU_PAR_DEFAUT,
+  }).format(date);
+}
+
+/** Journée locale courante, au même format que `cleJour`. */
+export function aujourdhui({ timeZone }: OptionsDate = {}): string {
+  return cleJour(new Date(), { timeZone });
+}
+
 /** Initiales pour un avatar sans photo : « Andry Nantenaina » → « AN ». */
 export function initiales(nom: string): string {
   return nom

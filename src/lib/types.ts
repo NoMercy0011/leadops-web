@@ -222,6 +222,41 @@ export interface Questionnaire {
   answers: ProspectAnswer[];
 }
 
+export type AppointmentType = "phone" | "video" | "on_site";
+
+/**
+ * Les quatre statuts de l'esquisse. « Annulé » et « Absent » sont distincts :
+ * décommander à l'avance et ne pas se présenter n'appellent pas la même
+ * réaction commerciale.
+ */
+export type AppointmentStatus =
+  | "planned"
+  | "completed"
+  | "cancelled"
+  | "no_show";
+
+export interface Appointment {
+  id: number;
+  project_id: number;
+  prospect_id: number;
+  user_id: number | null;
+  /** UTC — la conversion appartient à `lib/format.ts`. */
+  scheduled_at: string;
+  ends_at: string;
+  duration_minutes: number;
+  type: AppointmentType;
+  type_label: string;
+  status: AppointmentStatus;
+  status_label: string;
+  /** Calculé par l'API : planifié et déjà passé. */
+  is_overdue: boolean;
+  location: string | null;
+  notes: string | null;
+  prospect?: Prospect;
+  project?: Project;
+  user?: User | null;
+}
+
 export interface ImportReport {
   imported: number;
   skipped: number;
