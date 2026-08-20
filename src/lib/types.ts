@@ -166,6 +166,62 @@ export interface ProspectActivity {
   user?: User | null;
 }
 
+/**
+ * Les onze types de questions de l'esquisse.
+ *
+ * Ils décrivent la mécanique d'un champ — comment il se saisit — jamais son
+ * sens métier, qui appartient au libellé saisi par le client.
+ */
+export type QuestionType =
+  | "text"
+  | "long_text"
+  | "number"
+  | "email"
+  | "phone"
+  | "date"
+  | "dropdown"
+  | "single_choice"
+  | "multiple_choice"
+  | "yes_no"
+  | "checkbox";
+
+export interface QuestionOption {
+  id: number;
+  /** S'affiche. */
+  label: string;
+  /** S'enregistre — distinct du libellé pour survivre à un renommage. */
+  value: string;
+  position: number;
+}
+
+export interface Question {
+  id: number;
+  project_id: number;
+  type: QuestionType;
+  type_label: string;
+  label: string;
+  help: string | null;
+  required: boolean;
+  position: number;
+  multi_value: boolean;
+  stored_as: "string" | "number" | "boolean" | "array";
+  options?: QuestionOption[];
+  /** Conditionne l'interdit de changement de type. Absent hors constructeur. */
+  has_answers?: boolean;
+}
+
+export interface ProspectAnswer {
+  question_id: number;
+  value: string | number | boolean | string[] | null;
+  /** Version lisible, résolue côté serveur. */
+  display: string;
+}
+
+export interface Questionnaire {
+  questions: Question[];
+  answers: ProspectAnswer[];
+}
+
 export interface ImportReport {
   imported: number;
   skipped: number;
