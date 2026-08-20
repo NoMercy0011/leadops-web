@@ -9,6 +9,7 @@ import {
   changePlan,
   suspendCompany,
 } from "../actions";
+import { NativeSelect } from "@/components/form-fields";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -21,6 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import type { Company, Plan } from "@/lib/types";
 
 export function CompanyActions({
@@ -46,39 +48,44 @@ export function CompanyActions({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <label htmlFor="plan" className="text-sm font-medium">
-          Plan d&apos;abonnement
-        </label>
-        <div className="flex gap-2">
-          <select
+      {/* Ce select est piloté par l'état React et non par un FormData : le
+          changement de plan part par une action appelée au clic, pas par une
+          soumission de formulaire. D'où `NativeSelect` seul plutôt que
+          `ChampSelect`, qui poserait un `name` inutile. */}
+      <Field>
+        <FieldLabel htmlFor="plan">Plan d&apos;abonnement</FieldLabel>
+        <div className="flex items-center gap-2">
+          <NativeSelect
             id="plan"
             value={planId}
             disabled={pending}
             onChange={(event) => setPlanId(Number(event.target.value))}
-            className="border-input bg-background focus-visible:ring-ring h-9 flex-1 rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
           >
             {plans.map((plan) => (
               <option key={plan.id} value={plan.id}>
                 {plan.name}
               </option>
             ))}
-          </select>
+          </NativeSelect>
 
           <Button
             variant="secondary"
+            className="shrink-0"
             disabled={pending || planId === company.subscription?.plan?.id}
+            aria-busy={pending}
             onClick={() => executer(() => changePlan(company.id, planId))}
           >
-            {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
+            {pending ? (
+              <LoaderCircle className="size-4 animate-spin" aria-hidden />
+            ) : null}
             Appliquer
           </Button>
         </div>
-        <p className="text-muted-foreground text-xs">
+        <FieldDescription>
           Une rétrogradation sous la consommation actuelle est refusée par
           l&apos;API : réduisez d&apos;abord les ressources concernées.
-        </p>
-      </div>
+        </FieldDescription>
+      </Field>
 
       <div className="space-y-2">
         <p className="text-sm font-medium">Accès de l&apos;entreprise</p>
@@ -86,6 +93,7 @@ export function CompanyActions({
         {suspendue ? (
           <Button
             disabled={pending}
+            aria-busy={pending}
             onClick={() => executer(() => activateCompany(company.id))}
           >
             {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
@@ -98,7 +106,7 @@ export function CompanyActions({
                 Suspendre l&apos;entreprise
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent className="shadow-dialog">
               <AlertDialogHeader>
                 <AlertDialogTitle>
                   Suspendre « {company.name} » ?

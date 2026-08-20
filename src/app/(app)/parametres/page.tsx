@@ -86,8 +86,14 @@ export default async function ParametresPage() {
           );
 
           return disponible ? (
-            <Card key={href} className="hover:border-ring transition-colors">
-              <Link href={href} className="block">
+            <Card
+              key={href}
+              className="hover:border-ring hover:shadow-raised duration-(--duration-base) ease-brand transition-[color,background-color,border-color,box-shadow]"
+            >
+              <Link
+                href={href}
+                className="focus-visible:ring-ring/50 block rounded-xl focus-visible:ring-3 focus-visible:outline-none"
+              >
                 {contenu}
               </Link>
             </Card>

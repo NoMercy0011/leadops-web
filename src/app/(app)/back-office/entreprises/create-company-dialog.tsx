@@ -6,9 +6,14 @@ import { LoaderCircle, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { createCompany, type ActionState } from "./actions";
+import {
+  ChampSelect,
+  ChampTexte,
+} from "@/components/form-fields";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -16,33 +21,24 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FieldGroup } from "@/components/ui/field";
+import { fuseauxHoraires, paysDisponibles } from "@/lib/geo";
+import { formatQuota } from "@/lib/format";
 import type { Plan } from "@/lib/types";
 
 const INITIAL: ActionState = {};
 
-function Champ({
-  id,
-  label,
-  erreur,
-  ...props
-}: React.ComponentProps<typeof Input> & { label: string; erreur?: string }) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      <Input id={id} name={id} aria-invalid={Boolean(erreur)} {...props} />
-      {erreur ? <p className="text-destructive text-sm">{erreur}</p> : null}
-    </div>
-  );
-}
+const FUSEAUX = fuseauxHoraires();
+const PAYS = paysDisponibles();
 
 function SubmitButton() {
   const { pending } = useFormStatus();
 
   return (
-    <Button type="submit" disabled={pending}>
-      {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
+    <Button type="submit" disabled={pending} aria-busy={pending}>
+      {pending ? (
+        <LoaderCircle className="size-4 animate-spin" aria-hidden />
+      ) : null}
       Créer l&apos;entreprise
     </Button>
   );
@@ -82,7 +78,7 @@ export function CreateCompanyDialog({ plans }: { plans: Plan[] }) {
         </Button>
       </DialogTrigger>
 
-      <DialogContent>
+      <DialogContent className="shadow-dialog sm:max-w-lg">
         <form action={formAction}>
           <DialogHeader>
             <DialogTitle>Nouvelle entreprise cliente</DialogTitle>
@@ -92,67 +88,87 @@ export function CreateCompanyDialog({ plans }: { plans: Plan[] }) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <Champ
+          <FieldGroup className="py-4">
+            <ChampTexte
               id="name"
               label="Nom"
               placeholder="ABC Commercial"
               required
+              autoFocus
               erreur={state.fieldErrors?.name}
             />
-            <Champ
+
+            <ChampTexte
               id="slug"
               label="Identifiant"
               placeholder="abc-commercial"
               required
+              aide="Minuscules, chiffres et tirets. Il apparaît dans les URL et ne se change pas ensuite."
               erreur={state.fieldErrors?.slug}
             />
-            <Champ
+
+            <ChampSelect
               id="timezone"
               label="Fuseau horaire"
               defaultValue="Indian/Antananarivo"
               required
+              // Ce n'est pas un réglage de confort : toutes les dates sont
+              // stockées en UTC et converties à l'affichage dans ce fuseau.
+              // Une erreur ici décale tout le calendrier du client.
+              aide="Toutes les dates affichées à ce client seront converties dans ce fuseau."
               erreur={state.fieldErrors?.timezone}
-            />
-            <Champ
-              id="default_country_code"
-              label="Code pays"
-              defaultValue="MG"
-              maxLength={2}
-              required
-              erreur={state.fieldErrors?.default_country_code}
-            />
+            >
+              {FUSEAUX.map((groupe) => (
+                <optgroup key={groupe.label} label={groupe.label}>
+                  {groupe.options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </ChampSelect>
 
-            <div className="space-y-2">
-              <Label htmlFor="plan_id">Plan</Label>
-              {/* Un <select> natif plutôt que le composant Select de shadcn :
-                  celui-ci ne pose pas de champ de formulaire natif, et sa
-                  valeur n'arriverait pas dans le FormData de la Server Action. */}
-              <select
-                id="plan_id"
-                name="plan_id"
-                required
-                defaultValue={plans[0]?.id}
-                className="border-input bg-background focus-visible:ring-ring h-9 w-full rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
-              >
-                {plans.map((plan) => (
-                  <option key={plan.id} value={plan.id}>
-                    {plan.name}
-                    {plan.max_users === null
-                      ? " — illimité"
-                      : ` — ${plan.max_users} utilisateurs`}
-                  </option>
-                ))}
-              </select>
-              {state.fieldErrors?.plan_id ? (
-                <p className="text-destructive text-sm">
-                  {state.fieldErrors.plan_id}
-                </p>
-              ) : null}
-            </div>
-          </div>
+            <ChampSelect
+              id="default_country_code"
+              label="Pays par défaut"
+              defaultValue="MG"
+              required
+              aide="Sert à normaliser les numéros de téléphone saisis au format local, donc à détecter les doublons."
+              erreur={state.fieldErrors?.default_country_code}
+            >
+              {PAYS.map((pays) => (
+                <option key={pays.value} value={pays.value}>
+                  {pays.label}
+                </option>
+              ))}
+            </ChampSelect>
+
+            <ChampSelect
+              id="plan_id"
+              label="Plan"
+              required
+              defaultValue={plans[0]?.id}
+              erreur={state.fieldErrors?.plan_id}
+            >
+              {plans.map((plan) => (
+                <option key={plan.id} value={plan.id}>
+                  {plan.name} — {formatQuota(plan.max_users)} utilisateur
+                  {plan.max_users === 1 ? "" : "s"}
+                </option>
+              ))}
+            </ChampSelect>
+          </FieldGroup>
 
           <DialogFooter>
+            {/* Une sortie explicite : sans elle, seuls la croix et la touche
+                Échap ferment la boîte, ce qui n'est évident ni au toucher ni
+                pour qui navigue au clavier sans connaître le raccourci. */}
+            <DialogClose asChild>
+              <Button type="button" variant="ghost">
+                Annuler
+              </Button>
+            </DialogClose>
             <SubmitButton />
           </DialogFooter>
         </form>

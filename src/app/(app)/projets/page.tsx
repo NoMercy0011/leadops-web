@@ -63,13 +63,21 @@ export default async function ProjetsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {projets.data.map((projet) => (
-            <Card key={projet.id} className="transition-colors hover:border-ring">
+            // La carte entière est cliquable, pas seulement le titre : une
+            // surface qui réagit au survol mais n'ouvre rien sous le curseur
+            // est une promesse non tenue. Le lien reste unique — il s'étend
+            // par un pseudo-élément — pour ne pas répéter la même destination
+            // trois fois dans l'ordre de tabulation.
+            <Card
+              key={projet.id}
+              className="hover:border-ring hover:shadow-raised duration-(--duration-base) ease-brand relative transition-[color,background-color,border-color,box-shadow]"
+            >
               <CardContent className="space-y-4 p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 space-y-1">
                     <Link
                       href={`/projets/${projet.id}`}
-                      className="font-heading block truncate text-base font-semibold hover:underline"
+                      className="font-heading block truncate text-base font-semibold after:absolute after:inset-0 after:rounded-xl hover:underline focus-visible:outline-none after:focus-visible:ring-3 after:focus-visible:ring-ring/50"
                     >
                       {projet.name}
                     </Link>

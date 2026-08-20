@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
 
 import { CompanyActions } from "./company-actions";
 import { CompanyStatusBadge } from "@/components/company-status-badge";
+import { LienRetour } from "@/components/lien-retour";
+import { Notice } from "@/components/notice";
+import { PageHeader } from "@/components/page-header";
 import { UsageMeter } from "@/components/usage-meter";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -58,26 +58,25 @@ export default async function FicheEntreprisePage({
 
   return (
     <div className="space-y-6">
-      <Button asChild variant="ghost" size="sm" className="-ml-2">
-        <Link href="/back-office/entreprises">
-          <ChevronLeft className="size-4" />
-          Toutes les entreprises
-        </Link>
-      </Button>
+      <LienRetour
+        href="/back-office/entreprises"
+        label="Toutes les entreprises"
+      />
 
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">
-          {company.name}
-        </h1>
-        <CompanyStatusBadge company={company} />
-      </div>
+      <PageHeader
+        titre={company.name}
+        description={
+          <span className="font-mono text-xs">{company.slug}</span>
+        }
+        actions={<CompanyStatusBadge company={company} />}
+      />
 
       {!company.allows_writes ? (
-        <div className="bg-warning-subtle text-warning-subtle-foreground rounded-md px-4 py-3 text-sm">
+        <Notice variant="warning" titre="Écriture bloquée">
           Cette entreprise ne peut plus enregistrer de modifications. La
           consultation et l&apos;export lui restent ouverts — couper la lecture
           reviendrait à retenir ses données.
-        </div>
+        </Notice>
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-3">

@@ -116,6 +116,68 @@ export interface Project {
   created_at: string | null;
 }
 
+export interface Prospect {
+  id: number;
+  project_id: number;
+  stage_id: number;
+  assigned_user_id: number | null;
+  first_name: string;
+  last_name: string | null;
+  full_name: string;
+  company_name: string | null;
+  /** Valeur saisie. Les colonnes normalisées restent internes à l'API. */
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  source: string | null;
+  notes: string | null;
+  next_action_at: string | null;
+  next_action_note: string | null;
+  converted_at: string | null;
+  lost_at: string | null;
+  /** Dérivée du journal côté API, jamais stockée. */
+  last_interaction_at?: string | null;
+  stage?: PipelineStage;
+  project?: Project;
+  assigned_user?: User | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export type ActivityType =
+  | "created"
+  | "stage_changed"
+  | "assigned"
+  | "unassigned"
+  | "note_added"
+  | "imported"
+  | "next_action_planned"
+  | "fields_updated";
+
+export interface ProspectActivity {
+  id: number;
+  type: ActivityType;
+  type_label: string;
+  is_interaction: boolean;
+  /** Forme variable selon le type — voir ActivityLogger côté API. */
+  payload: Record<string, unknown> | null;
+  occurred_at: string;
+  /** Absent pour un import automatisé ou un compte supprimé depuis. */
+  user?: User | null;
+}
+
+export interface ImportReport {
+  imported: number;
+  skipped: number;
+  errors: { line: number; message: string }[];
+}
+
+export interface BulkAssignReport {
+  requested: number;
+  reassigned: number;
+  skipped: number;
+}
+
 export interface LoginResponse {
   token: string;
   user: User;
