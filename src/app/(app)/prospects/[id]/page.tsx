@@ -27,6 +27,8 @@ import { formatDate, formatDistance } from "@/lib/format";
 import { getProject, listCompanyUsers } from "@/lib/projects";
 import { getProspect, listActivities } from "@/lib/prospects";
 import { getQuestionnaire } from "@/lib/questionnaire";
+import { listAppointments } from "@/lib/appointments";
+import { AppointmentsPanel } from "./appointments-panel";
 import { QuestionnaireForm } from "./questionnaire-form";
 
 export const metadata: Metadata = {
@@ -59,7 +61,7 @@ export default async function FicheProspectPage({
 
   const encadrement = user.role === "admin_client" || user.role === "manager";
 
-  const [activites, projet, utilisateurs, questionnaire] = await Promise.all([
+  const [activites, projet, utilisateurs, questionnaire, rendezVous] = await Promise.all([
     listActivities(prospectId),
     // Le projet fournit le pipeline : la liste des étapes proposées doit être
     // celle de *son* projet, aucune autre.
@@ -68,6 +70,9 @@ export default async function FicheProspectPage({
       ? listCompanyUsers()
       : Promise.resolve({ data: [], meta: { current_page: 1, last_page: 1, total: 0 } }),
     getQuestionnaire(prospectId),
+    // Sans bornes de dates : la fiche montre tout l'historique du prospect,
+    // passé comme à venir, là où le calendrier borne à une période.
+    listAppointments({ prospect_id: prospectId }),
   ]);
 
   const fuseau = user.company?.timezone;
@@ -158,6 +163,22 @@ export default async function FicheProspectPage({
               />
               <Separator />
               <NextActionForm prospect={prospect} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Rendez-vous</CardTitle>
+              <CardDescription>
+                Ils héritent du projet et du commercial de ce prospect.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AppointmentsPanel
+                prospectId={prospect.id}
+                rendezVous={rendezVous}
+                fuseau={fuseau}
+              />
             </CardContent>
           </Card>
 
