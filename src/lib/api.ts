@@ -38,6 +38,12 @@ interface ApiOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
   /** Envoyer la requête sans jeton (connexion, mot de passe oublié). */
   anonymous?: boolean;
+  /**
+   * Par défaut la réponse est déballée de son enveloppe `data`, qui n'apporte
+   * rien à l'appelant. Passer `false` pour une collection paginée, dont le
+   * bloc `meta` porte le nombre de pages et serait perdu au déballage.
+   */
+  unwrap?: boolean;
 }
 
 /**
@@ -49,7 +55,7 @@ interface ApiOptions extends Omit<RequestInit, "body"> {
  */
 export async function apiFetch<T>(
   path: string,
-  { body, anonymous = false, headers, ...init }: ApiOptions = {},
+  { body, anonymous = false, unwrap = true, headers, ...init }: ApiOptions = {},
 ): Promise<T> {
   const token = anonymous ? null : await getSessionToken();
 
@@ -82,5 +88,5 @@ export async function apiFetch<T>(
     );
   }
 
-  return (payload?.data ?? payload) as T;
+  return (unwrap ? (payload?.data ?? payload) : payload) as T;
 }
