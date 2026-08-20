@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 
+import { EmptyState } from "@/components/empty-state";
 import { ModeToggle } from "@/components/mode-toggle";
+import { Notice } from "@/components/notice";
+import { StatusBadge, type Tone } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,8 +15,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Inbox } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -51,11 +55,27 @@ const CONTRASTES = [
   { couleur: "#8FBC8F", usage: "Sauge d'origine en texte", ratio: "1,9:1", ok: false },
 ];
 
-const ETATS = [
-  { label: "Converti", classe: "bg-success-subtle text-success-foreground" },
-  { label: "Relance en retard", classe: "bg-warning-subtle text-warning" },
-  { label: "Perdu", classe: "bg-destructive-subtle text-destructive" },
-  { label: "Nouveau", classe: "bg-info-subtle text-info" },
+const ETATS: Array<{ label: string; tone: Tone }> = [
+  { label: "Converti", tone: "success" },
+  { label: "Relance en retard", tone: "warning" },
+  { label: "Perdu", tone: "danger" },
+  { label: "Nouveau", tone: "info" },
+  { label: "Sans suite", tone: "neutral" },
+];
+
+/** Échelle de mouvement, telle que définie dans globals.css. */
+const MOUVEMENT = [
+  { nom: "fast", valeur: "120 ms", usage: "Survol, focus, changement de couleur" },
+  { nom: "base", valeur: "200 ms", usage: "Menu, panneau, ligne de tableau" },
+  { nom: "slow", valeur: "320 ms", usage: "Transition de page, glisser-déposer" },
+];
+
+/** Registres d élévation. */
+const ELEVATION = [
+  { nom: "plat", classe: "", usage: "Cartes, tableaux, sections" },
+  { nom: "raised", classe: "shadow-raised", usage: "Carte survolée, élément saisi" },
+  { nom: "overlay", classe: "shadow-overlay", usage: "Menu, popover, feuille" },
+  { nom: "dialog", classe: "shadow-dialog", usage: "Boîte de dialogue modale" },
 ];
 
 function Section({
@@ -181,8 +201,8 @@ export default function ChartePage() {
                       <Badge
                         className={
                           c.ok
-                            ? "bg-success-subtle text-success-foreground"
-                            : "bg-destructive-subtle text-destructive"
+                            ? "bg-success-subtle text-success-subtle-foreground"
+                            : "bg-destructive-subtle text-destructive-subtle-foreground"
                         }
                       >
                         {c.ok ? "atteint" : "échoue"}
@@ -209,21 +229,21 @@ export default function ChartePage() {
 
       <Section
         titre="États métier"
-        description="Aplats de badge, avec la déclinaison foncée en texte. Les étapes de pipeline étant configurables par projet, elles piocheront dans un jeu restreint défini au lot 3."
+        description="StatusBadge prend une tonalité, jamais un état métier. Les étapes de pipeline sont des lignes en base configurées par chaque client, et leur couleur vient de l API : un composant qui testerait le libellé « Converti » serait faux dès le premier client qui renomme ses étapes. Chaque aplat discret porte son propre jeton de texte, --x-subtle-foreground, distinct de --x-foreground qui est destiné à l aplat plein — à vérifier dans les deux thèmes avec le sélecteur ci-dessus."
       >
         <div className="flex flex-wrap gap-2">
           {ETATS.map((e) => (
-            <span
-              key={e.label}
-              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${e.classe}`}
-            >
+            <StatusBadge key={e.label} tone={e.tone}>
               {e.label}
-            </span>
+            </StatusBadge>
           ))}
         </div>
       </Section>
 
-      <Section titre="Formulaire">
+      <Section
+        titre="Formulaire"
+        description="Les champs passent par Field et non par un Label posé à côté d un Input : shadcn a retiré le composant form au profit de field, et le questionnaire dynamique du lot 5 générera ses champs depuis ce même registre. L état d erreur fait partie du composant, il n est pas ajouté après coup."
+      >
         <Card className="max-w-md">
           <CardHeader>
             <CardTitle>Nouveau prospect</CardTitle>
@@ -232,18 +252,103 @@ export default function ChartePage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="nom">Nom</Label>
+            <Field>
+              <FieldLabel htmlFor="nom">Nom</FieldLabel>
               <Input id="nom" placeholder="Dupont" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="jean@example.com" />
-            </div>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="email-prospect">Email</FieldLabel>
+              <Input
+                id="email-prospect"
+                type="email"
+                placeholder="jean@example.com"
+                aria-invalid
+              />
+              <FieldError>Adresse email invalide.</FieldError>
+            </Field>
             <Separator />
             <Button className="w-full">Créer le prospect</Button>
           </CardContent>
         </Card>
+      </Section>
+
+      <Section
+        titre="Mouvement"
+        description="Trois durées et une seule courbe pour tout le produit. Une échelle plus fine ne tient pas dans le temps : chaque écran finit par inventer sa valeur. Le réglage système « animations réduites » ramène toutes ces durées à zéro."
+      >
+        <div className="grid gap-3 sm:grid-cols-3">
+          {MOUVEMENT.map((m) => (
+            <Card key={m.nom}>
+              <CardContent className="space-y-2 p-4">
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="font-mono text-sm font-medium">{m.nom}</p>
+                  <p className="text-muted-foreground font-mono text-xs">
+                    {m.valeur}
+                  </p>
+                </div>
+                <div className="bg-muted h-1.5 overflow-hidden rounded-full">
+                  <div
+                    className="bg-brand-gradient h-full rounded-full"
+                    style={{ width: `${33 * (MOUVEMENT.indexOf(m) + 1)}%` }}
+                  />
+                </div>
+                <p className="text-muted-foreground text-xs">{m.usage}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </Section>
+
+      <Section
+        titre="Élévation"
+        description="Les surfaces de contenu restent plates — leur profondeur vient du contraste entre le canevas et le blanc des cartes. Seules les surfaces temporaires, qui recouvrent du contenu, portent une ombre."
+      >
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {ELEVATION.map((e) => (
+            <div key={e.nom} className="space-y-2">
+              <div
+                className={`bg-card border-border flex h-20 items-center justify-center rounded-lg border ${e.classe}`}
+              >
+                <span className="font-mono text-xs">{e.nom}</span>
+              </div>
+              <p className="text-muted-foreground text-xs">{e.usage}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section
+        titre="Messages"
+        description="Un Notice décrit un état qui persiste tant que sa cause persiste. À distinguer du toast, qui signale le résultat d'une action et disparaît."
+      >
+        <div className="space-y-3">
+          <Notice variant="info">
+            Ce prospect existe déjà dans un autre projet. C&apos;est autorisé :
+            un même contact peut être travaillé sur plusieurs projets.
+          </Notice>
+          <Notice variant="success" titre="Import terminé">
+            284 prospects créés, 3 lignes ignorées.
+          </Notice>
+          <Notice variant="warning" titre="Enregistrement suspendu">
+            L&apos;abonnement ne permet plus d&apos;enregistrer de
+            modifications. La consultation et l&apos;export restent disponibles.
+          </Notice>
+          <Notice variant="destructive">
+            Ces identifiants ne correspondent à aucun compte.
+          </Notice>
+        </div>
+      </Section>
+
+      <Section
+        titre="Écran vide"
+        description="Le premier écran que voit tout nouvel utilisateur : un projet sans prospect, un questionnaire sans question. Il porte toujours une action — ou, à défaut, l'explication de qui peut fournir ce qui manque."
+      >
+        <EmptyState
+          icon={Inbox}
+          titre="Aucun prospect dans ce projet"
+          description="Importez un fichier CSV ou créez le premier prospect à la main."
+          action={<Button>Importer des prospects</Button>}
+        />
       </Section>
 
       <Section

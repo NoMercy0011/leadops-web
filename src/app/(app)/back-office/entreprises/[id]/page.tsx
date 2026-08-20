@@ -17,6 +17,7 @@ import {
 import { ApiError } from "@/lib/api";
 import { getCompany, getCompanyUsage, listPlans } from "@/lib/admin";
 import { requireUser } from "@/lib/dal";
+import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = {
   title: "Fiche entreprise",
@@ -72,7 +73,7 @@ export default async function FicheEntreprisePage({
       </div>
 
       {!company.allows_writes ? (
-        <div className="bg-warning-subtle text-warning rounded-md px-4 py-3 text-sm">
+        <div className="bg-warning-subtle text-warning-subtle-foreground rounded-md px-4 py-3 text-sm">
           Cette entreprise ne peut plus enregistrer de modifications. La
           consultation et l&apos;export lui restent ouverts — couper la lecture
           reviendrait à retenir ses données.
@@ -117,10 +118,13 @@ export default async function FicheEntreprisePage({
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Échéance</span>
                 <span>
+                  {/* Passe par le point de formatage unique : la date est
+                      stockée en UTC et doit être lue dans le fuseau de
+                      l'entreprise, pas dans celui du serveur ni du navigateur. */}
                   {company.subscription?.expires_at
-                    ? new Date(
-                        company.subscription.expires_at,
-                      ).toLocaleDateString("fr-FR")
+                    ? formatDate(company.subscription.expires_at, {
+                        timeZone: company.timezone,
+                      })
                     : "Sans échéance"}
                 </span>
               </div>

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import { Building2, CalendarClock, ChartNoAxesColumn } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/empty-state";
+import { PageHeader } from "@/components/page-header";
+import { StatusBadge, toneAbonnement } from "@/components/status-badge";
 import {
   Card,
   CardContent,
@@ -8,6 +11,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { formatDate, formatDistance, formatQuota, prenom } from "@/lib/format";
 import { requireUser } from "@/lib/dal";
 
 export const metadata: Metadata = {
@@ -16,83 +21,122 @@ export const metadata: Metadata = {
 
 export default async function TableauDeBordPage() {
   const user = await requireUser();
-  const subscription = user.company?.subscription;
+  const entreprise = user.company;
+  const abonnement = entreprise?.subscription;
+  const fuseau = entreprise?.timezone;
+
+  const plafonds = [
+    { label: "Projets", valeur: abonnement?.plan?.max_projects },
+    { label: "Utilisateurs", valeur: abonnement?.plan?.max_users },
+    { label: "Prospects", valeur: abonnement?.plan?.max_prospects },
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">
-          Bonjour {user.name.split(" ")[0]}
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          Les indicateurs seront mis en place au lot 7.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        titre={`Bonjour ${prenom(user.name)}`}
+        description={
+          <>
+            Vous êtes connecté en tant que {user.role_label}
+            {entreprise ? ` chez ${entreprise.name}` : " de la plateforme"}.
+          </>
+        }
+      />
 
-      {user.company && !user.company.allows_writes ? (
-        <div className="bg-warning-subtle text-warning rounded-md px-4 py-3 text-sm">
-          L&apos;abonnement de votre entreprise ne permet plus d&apos;enregistrer
-          de modifications. La consultation et l&apos;export restent
-          disponibles.
+      {entreprise ? (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card>
+            <CardHeader>
+              <CardDescription className="flex items-center gap-1.5">
+                <Building2 className="size-3.5" aria-hidden />
+                Entreprise
+              </CardDescription>
+              <CardTitle className="text-xl">{entreprise.name}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="text-sm">
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-muted-foreground">Fuseau horaire</dt>
+                  {/* Le fuseau conditionne l'heure de tous les rendez-vous du
+                      calendrier : il est affiché, pas caché dans un réglage. */}
+                  <dd className="font-medium">{entreprise.timezone}</dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
+
+          {abonnement ? (
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardDescription className="flex items-center gap-1.5">
+                  <CalendarClock className="size-3.5" aria-hidden />
+                  Abonnement
+                </CardDescription>
+                <CardTitle className="flex flex-wrap items-center gap-2 text-xl">
+                  {abonnement.plan?.name ?? "Plan inconnu"}
+                  {/* `effective_status` et non `status` : l'API distingue la
+                      valeur stockée d'une échéance déjà dépassée que la tâche
+                      planifiée n'a pas encore traitée. */}
+                  <StatusBadge tone={toneAbonnement(abonnement.effective_status)}>
+                    {abonnement.effective_status_label}
+                  </StatusBadge>
+                </CardTitle>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                {abonnement.expires_at ? (
+                  <p className="text-muted-foreground text-sm">
+                    Échéance le{" "}
+                    <span
+                      className="text-foreground font-medium"
+                      title={formatDate(abonnement.expires_at, {
+                        timeZone: fuseau,
+                      })}
+                    >
+                      {formatDate(abonnement.expires_at, { timeZone: fuseau })}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      — {formatDistance(abonnement.expires_at)}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground text-sm">Sans échéance.</p>
+                )}
+
+                <Separator />
+
+                <div>
+                  <p className="text-muted-foreground mb-3 text-xs font-medium tracking-wide uppercase">
+                    Plafonds du plan
+                  </p>
+                  {/* Les plafonds seuls, sans la consommation : l'endpoint qui
+                      la fournit arrive au lot 2. Afficher une barre de
+                      progression sans dénominateur réel serait une invention. */}
+                  <dl className="grid gap-3 sm:grid-cols-3">
+                    {plafonds.map(({ label, valeur }) => (
+                      <div key={label} className="space-y-0.5">
+                        <dt className="text-muted-foreground text-sm">
+                          {label}
+                        </dt>
+                        <dd className="font-heading text-lg font-semibold tabular-nums">
+                          {formatQuota(valeur)}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardDescription>Rôle</CardDescription>
-            <CardTitle className="text-xl">{user.role_label}</CardTitle>
-          </CardHeader>
-        </Card>
-
-        {user.company ? (
-          <Card>
-            <CardHeader>
-              <CardDescription>Entreprise</CardDescription>
-              <CardTitle className="text-xl">{user.company.name}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-sm">
-                Fuseau : {user.company.timezone}
-              </p>
-            </CardContent>
-          </Card>
-        ) : null}
-
-        {subscription ? (
-          <Card>
-            <CardHeader>
-              <CardDescription>Abonnement</CardDescription>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                {subscription.plan?.name ?? "—"}
-                <Badge
-                  className={
-                    subscription.effective_status === "active"
-                      ? "bg-success-subtle text-success-foreground"
-                      : "bg-destructive-subtle text-destructive"
-                  }
-                >
-                  {subscription.effective_status_label}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-muted-foreground space-y-1 text-sm">
-              <p>
-                Projets :{" "}
-                {subscription.plan?.max_projects ?? "illimité"}
-              </p>
-              <p>
-                Utilisateurs :{" "}
-                {subscription.plan?.max_users ?? "illimité"}
-              </p>
-              <p>
-                Prospects :{" "}
-                {subscription.plan?.max_prospects ?? "illimité"}
-              </p>
-            </CardContent>
-          </Card>
-        ) : null}
-      </div>
+      <EmptyState
+        icon={ChartNoAxesColumn}
+        titre="Les indicateurs arrivent au lot 7"
+        description="Taux de qualification, taux de conversion, activité par commercial et durée de cycle s'afficheront ici, filtrables par projet, variante et période."
+      />
     </div>
   );
 }

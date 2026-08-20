@@ -60,6 +60,62 @@ export interface User {
   company?: Company;
 }
 
+export type ProjectStatus = "active" | "suspended" | "completed";
+
+/**
+ * Jeu restreint de couleurs d'étapes, fixé côté API.
+ *
+ * Ce sont des *noms*, pas des codes hexadécimaux : le rendu appartient à la
+ * charte, et transmettre un `#RRGGBB` depuis l'API figerait la palette en base
+ * de données — toute retouche exigerait alors une migration.
+ */
+export type StageColor =
+  | "slate"
+  | "blue"
+  | "teal"
+  | "sage"
+  | "amber"
+  | "violet"
+  | "rose"
+  | "red";
+
+export interface Variant {
+  id: number;
+  name: string;
+  position: number;
+  projects_count?: number;
+}
+
+export interface PipelineStage {
+  id: number;
+  project_id: number;
+  name: string;
+  position: number;
+  /**
+   * La sémantique terminale voyage par ces deux drapeaux, jamais par le
+   * libellé — invariant n°2. Ne jamais écrire `stage.name === "Converti"`.
+   */
+  is_won: boolean;
+  is_lost: boolean;
+  color: StageColor;
+}
+
+export interface Project {
+  id: number;
+  name: string;
+  product: string | null;
+  target: string | null;
+  description: string | null;
+  status: ProjectStatus;
+  status_label: string;
+  accepts_new_prospects: boolean;
+  variant?: Variant | null;
+  stages?: PipelineStage[];
+  members?: User[];
+  members_count?: number;
+  created_at: string | null;
+}
+
 export interface LoginResponse {
   token: string;
   user: User;

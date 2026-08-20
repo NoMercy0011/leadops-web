@@ -1,6 +1,7 @@
 import { Infinity as InfinityIcon } from "lucide-react";
 
 import { Progress } from "@/components/ui/progress";
+import { formatNombre } from "@/lib/format";
 import type { UsageEntry } from "@/lib/admin";
 
 const LIBELLES: Record<string, string> = {
@@ -30,7 +31,7 @@ export function UsageMeter({
         <div className="flex items-baseline justify-between text-sm">
           <span className="font-medium">{libelle}</span>
           <span className="text-muted-foreground flex items-center gap-1">
-            {entry.used} <span aria-hidden>/</span>
+            {formatNombre(entry.used)} <span aria-hidden>/</span>
             <InfinityIcon className="size-4" aria-label="illimité" />
           </span>
         </div>
@@ -57,14 +58,14 @@ export function UsageMeter({
                 : "text-muted-foreground"
           }
         >
-          {entry.used} / {entry.limit}
+          {formatNombre(entry.used)} / {formatNombre(entry.limit)}
         </span>
       </div>
       <Progress value={pourcentage} />
       <p className="text-muted-foreground text-xs">
         {sature
           ? "Plafond atteint — toute création sera refusée."
-          : `${entry.remaining} restant${(entry.remaining ?? 0) > 1 ? "s" : ""}`}
+          : `${formatNombre(entry.remaining)} restant${(entry.remaining ?? 0) > 1 ? "s" : ""}`}
       </p>
     </div>
   );
