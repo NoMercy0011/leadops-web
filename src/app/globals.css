@@ -1,26 +1,414 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
+
+/* ---------------------------------------------------------------------------
+   LeadOps — thème
+
+   Palette de marque :
+     #1D3FD1  bleu    — couleur d'information et de lien, issue du logo
+     #0F766E  teal    — couleur d'action, reprise du dégradé central du logo
+     #2B2D42  navy    — texte principal et navigation, repris du mot « Lead »
+     #EDF2F4  clair   — fond d'application
+     #8D99AE  gris    — bordures, icônes, états inactifs
+     #8FBC8F  sauge   — états positifs (converti, gagné)
+     #EF233C  rouge   — états négatifs (perdu, suppression)
+
+   Trois teintes ont dû être assombries pour rester lisibles : voir les
+   commentaires « dérivé » ci-dessous. Les valeurs d'origine restent utilisées
+   en aplat, où le contraste se joue avec le texte posé dessus et non avec le
+   fond de page.
+--------------------------------------------------------------------------- */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* Sémantique métier, absente du thème shadcn par défaut.
+
+     Chaque tonalité a trois jetons, et la distinction entre les deux derniers
+     est celle qui se rate le plus souvent :
+
+       --x                     l'aplat plein
+       --x-foreground          le texte posé SUR cet aplat plein
+       --x-subtle-foreground   le texte posé sur --x-subtle
+
+     Les confondre passe inaperçu en clair, où les deux fonds sont clairs, et
+     devient illisible en sombre, où l'aplat plein reste clair tandis que le
+     fond discret devient foncé : le texte destiné au premier disparaît sur le
+     second. La règle est donc sans exception —
+     `bg-x-subtle` s'accompagne toujours de `text-x-subtle-foreground`. */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-subtle: var(--success-subtle);
+  --color-success-subtle-foreground: var(--success-subtle-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-warning-subtle-foreground: var(--warning-subtle-foreground);
+  --color-destructive-subtle: var(--destructive-subtle);
+  --color-destructive-subtle-foreground: var(--destructive-subtle-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-subtle: var(--info-subtle);
+  --color-info-subtle-foreground: var(--info-subtle-foreground);
+
+  /* Teintes réservées aux étapes de pipeline. Elles ne portent aucune
+     sémantique — ni succès, ni alerte — et n'ont donc pas leur place parmi les
+     quatre aplats métier ci-dessus. Elles existent parce qu'un pipeline de sept
+     étapes a besoin de plus de six repères distinguables. */
+  --color-violet-subtle: var(--violet-subtle);
+  --color-violet-subtle-foreground: var(--violet-subtle-foreground);
+  --color-rose-subtle: var(--rose-subtle);
+  --color-rose-subtle-foreground: var(--rose-subtle-foreground);
+
+  /* Mouvement — voir le bloc « Mouvement » plus bas pour les durées.
+     Une seule courbe pour tout le produit : elle démarre vite et freine, ce
+     qui donne une interface qui répond au doigt plutôt qu'une interface qui
+     s'anime. `--ease-brand-in` sert aux disparitions, où l'inverse est vrai. */
+  --ease-brand: cubic-bezier(0.2, 0, 0, 1);
+  --ease-brand-in: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Élévation — le parti pris « profondeur par contraste de surfaces » vaut
+     pour les surfaces de contenu, pas pour les surfaces temporaires : un menu
+     ou une boîte de dialogue doit se détacher de ce qu'il recouvre. */
+  --shadow-raised: var(--elevation-raised);
+  --shadow-overlay: var(--elevation-overlay);
+  --shadow-dialog: var(--elevation-dialog);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --radius: 0.625rem;
+
+  /* -------------------------------------------------------------------------
+     Mouvement
+
+     Trois durées, pas davantage. Une échelle plus fine ne se tient pas dans le
+     temps : chaque écran finit par inventer sa valeur et l'ensemble paraît
+     bricolé. S'emploie en `duration-(--duration-base) ease-brand`.
+
+       fast  survol, focus, changement de couleur — doit être imperceptible
+       base  apparition d'un menu, d'un panneau, d'une ligne de tableau
+       slow  transition de page, panneau latéral, glisser-déposer du kanban
+
+     Au-delà de 320 ms, l'utilisateur attend l'interface au lieu d'être guidé
+     par elle. Un CRM se manipule toute la journée : la retenue prime.
+  ------------------------------------------------------------------------- */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+
+  /* -------------------------------------------------------------------------
+     Élévation
+
+     Deux registres distincts, et c'est la distinction qui compte :
+
+     - Les surfaces de *contenu* (cartes, tableaux, sections) restent plates.
+       Leur profondeur vient du contraste entre le canevas #EDF2F4 et le blanc
+       des cartes — parti pris de la direction artistique.
+     - Les surfaces *temporaires* (menu déroulant, popover, feuille, dialogue)
+       recouvrent du contenu et doivent s'en détacher, sinon l'utilisateur ne
+       sait plus ce qui est actif.
+
+     Les ombres sont teintées navy (#2B2D42) plutôt que noires : une ombre noire
+     sur un fond bleuté grise l'image.
+  ------------------------------------------------------------------------- */
+  --elevation-raised:
+    0 1px 2px -1px rgb(43 45 66 / 0.08), 0 2px 8px -2px rgb(43 45 66 / 0.06);
+  --elevation-overlay:
+    0 2px 4px -2px rgb(43 45 66 / 0.1), 0 8px 24px -6px rgb(43 45 66 / 0.14);
+  --elevation-dialog:
+    0 4px 8px -4px rgb(43 45 66 / 0.12), 0 24px 48px -12px rgb(43 45 66 / 0.22);
+
+  /* -------------------------------------------------------------------------
+     Densité et gabarit
+
+     Un CRM affiche des tableaux de plusieurs centaines de lignes. La hauteur de
+     ligne se décide ici une fois, pas écran par écran, sinon les listes de
+     prospects, d'utilisateurs et de rendez-vous divergeront.
+
+     `--page-max` borne la largeur du contenu : sans elle, un tableau de six
+     colonnes s'étire sur un écran 32 pouces et l'œil perd la ligne entre la
+     première et la dernière cellule.
+  ------------------------------------------------------------------------- */
+  --row-height: 3rem;
+  --row-height-compact: 2.25rem;
+  --page-max: 88rem;
+
+  /* Surfaces : canevas teinté, cartes blanches — la profondeur vient du
+     contraste entre les deux, pas d'ombres portées appuyées. */
+  --background: #edf2f4;
+  --foreground: #2b2d42; /* 11,9:1 sur le fond — confortable en lecture dense */
+  --card: #ffffff;
+  --card-foreground: #2b2d42;
+  --popover: #ffffff;
+  --popover-foreground: #2b2d42;
+
+  /* Action principale */
+  --primary: #0f766e; /* 5,5:1 avec du blanc dessus */
+  --primary-foreground: #ffffff;
+
+  --secondary: #dfe7ea;
+  --secondary-foreground: #2b2d42;
+
+  --muted: #e4eaec;
+  /* dérivé de #8D99AE : l'original ne donne que 2,6:1 sur le fond clair,
+     insuffisant pour du texte. Assombri à 5,3:1 en conservant la teinte. */
+  --muted-foreground: #5a6478;
+
+  --accent: #e3f0ee;
+  --accent-foreground: #0f766e;
+
+  /* dérivé de #EF233C : blanc sur l'original plafonne à 4,2:1, sous le seuil
+     AA. #D90429 est la déclinaison foncée de la même famille — 5,3:1. */
+  --destructive: #d90429;
+  --destructive-foreground: #ffffff;
+  --destructive-subtle: #fde8eb; /* aplat de badge, texte foncé dessus */
+  --destructive-subtle-foreground: #d90429; /* 5,5:1 sur l'aplat */
+
+  /* dérivé de #8FBC8F, même logique : la sauge d'origine reste l'aplat,
+     sa version foncée porte le texte. */
+  --success: #8fbc8f;
+  --success-foreground: #3f6b45;
+  --success-subtle: #e9f2e9;
+  --success-subtle-foreground: #3f6b45; /* 5,9:1 sur l'aplat */
+
+  /* AJOUT hors palette : aucune couleur d'alerte n'était fournie, or le
+     domaine en réclame une (relance en retard, abonnement proche
+     d'expiration). Ocre choisi pour cohabiter avec la sauge et le teal. */
+  --warning: #b45309;
+  --warning-foreground: #ffffff;
+  --warning-subtle: #fdf0e3;
+  --warning-subtle-foreground: #b45309; /* 5,4:1 sur l'aplat */
+
+  /* Bleu de marque, échantillonné dans le logo. Les bleus d'origine
+     (#0026D8 à #0278FB) sont trop saturés pour de larges aplats d'interface :
+     cette version assombrie reste reconnaissable à 6,9:1 sur le fond. */
+  --info: #1d3fd1;
+  --info-foreground: #ffffff;
+  --info-subtle: #e6ebfc;
+  --info-subtle-foreground: #1d3fd1; /* 6,6:1 sur l'aplat */
+
+  /* Étapes de pipeline uniquement — voir le commentaire du bloc @theme. */
+  --violet-subtle: #efe9fb;
+  --violet-subtle-foreground: #6d28d9; /* 6,0:1 sur l'aplat */
+  --rose-subtle: #fce7f0;
+  --rose-subtle-foreground: #be185d; /* 5,2:1 sur l'aplat */
+
+  /* Dégradé signature, reprenant la course bleu → teal → vert du logo.
+     Réservé aux surfaces d'accueil, écrans vides et barres de progression :
+     jamais derrière du texte de lecture. */
+  --brand-gradient: linear-gradient(135deg, #1d3fd1 0%, #0f766e 55%, #22a06b 100%);
+
+  --border: #cdd5de;
+  --input: #cdd5de;
+  --ring: #0f766e; /* anneau de focus dans la couleur de marque */
+
+  /* Séries de graphiques — à confronter aux règles de dataviz au lot 7 */
+  --chart-1: #0f766e;
+  --chart-2: #1d3fd1;
+  --chart-3: #8fbc8f;
+  --chart-4: #8d99ae;
+  --chart-5: #ef233c;
+
+  /* Navigation : bandeau navy pleine hauteur, écho direct au mot « Lead »
+     du logo. Texte clair dessus à 13,5:1. */
+  --sidebar: #2b2d42;
+  --sidebar-foreground: #edf2f4;
+  --sidebar-primary: #0f766e;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #3a3d57;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #3f4260;
+  --sidebar-ring: #8fbc8f;
+}
+
+.dark {
+  /* Sur fond sombre, une ombre teintée ne se voit plus : la séparation doit
+     venir du noir pur, plus dense, et d'une surface de carte plus claire que
+     le canevas. Les durées et la courbe restent celles du mode clair. */
+  --elevation-raised: 0 1px 2px -1px rgb(0 0 0 / 0.5);
+  --elevation-overlay:
+    0 2px 4px -2px rgb(0 0 0 / 0.5), 0 8px 24px -6px rgb(0 0 0 / 0.55);
+  --elevation-dialog:
+    0 4px 8px -4px rgb(0 0 0 / 0.6), 0 24px 48px -12px rgb(0 0 0 / 0.7);
+
+  --background: #1a1b28;
+  --foreground: #edf2f4;
+  --card: #232538;
+  --card-foreground: #edf2f4;
+  --popover: #232538;
+  --popover-foreground: #edf2f4;
+
+  /* Le teal foncé manque de lisibilité sur fond sombre : on remonte la
+     luminosité en gardant la teinte. */
+  --primary: #2dd4bf;
+  --primary-foreground: #10201f;
+
+  --secondary: #2f3247;
+  --secondary-foreground: #edf2f4;
+
+  --muted: #2f3247;
+  --muted-foreground: #a2acc0;
+
+  --accent: #2a3f3d;
+  --accent-foreground: #5eead4;
+
+  --destructive: #ef233c;
+  --destructive-foreground: #ffffff;
+  --destructive-subtle: #3a1a22;
+  /* Le rouge d'origine sur ce fond ne donne que 3,7:1 — sous le seuil AA.
+     Éclairci dans la même famille : 6,9:1. */
+  --destructive-subtle-foreground: #ff8a99;
+
+  --success: #8fbc8f;
+  --success-foreground: #1c2b1e;
+  --success-subtle: #24331f;
+  /* Le cas le plus visible du piège décrit dans @theme : --success-foreground
+     est un vert quasi noir, taillé pour être lu SUR la sauge pleine. Posé sur
+     ce fond discret lui aussi foncé, il tombait à 1,1:1 — le badge « Converti »
+     était illisible. Sauge éclaircie, teinte conservée : 8,1:1. */
+  --success-subtle-foreground: #a9d4a9;
+
+  --warning: #d98324;
+  --warning-foreground: #241203;
+  --warning-subtle: #3a2a15;
+  /* L'ocre d'origine passait de justesse (4,7:1). Éclairci à 6,3:1 : un badge
+     se lit en 12 px, où la marge de confort compte. */
+  --warning-subtle-foreground: #e8a04a;
+
+  /* Le bleu de marque s'effondre sur fond sombre : on remonte fortement la
+     luminosité en gardant la teinte du logo. */
+  --info: #8aa4ff;
+  --info-foreground: #101a3a;
+  --info-subtle: #1e2445;
+  --info-subtle-foreground: #8aa4ff; /* 6,4:1 sur l'aplat */
+
+  --violet-subtle: #241c3d;
+  --violet-subtle-foreground: #c4b5fd;
+  --rose-subtle: #35182a;
+  --rose-subtle-foreground: #f9a8d4;
+
+  --brand-gradient: linear-gradient(135deg, #4d6dff 0%, #2dd4bf 55%, #4ade80 100%);
+
+  --border: #ffffff1a;
+  --input: #ffffff26;
+  --ring: #2dd4bf;
+
+  --chart-1: #2dd4bf;
+  --chart-2: #8aa4ff;
+  --chart-3: #8fbc8f;
+  --chart-4: #a2acc0;
+  --chart-5: #ef233c;
+
+  --sidebar: #14151f;
+  --sidebar-foreground: #edf2f4;
+  --sidebar-primary: #2dd4bf;
+  --sidebar-primary-foreground: #10201f;
+  --sidebar-accent: #232538;
+  --sidebar-accent-foreground: #edf2f4;
+  --sidebar-border: #ffffff1a;
+  --sidebar-ring: #2dd4bf;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+
+  /* L'anneau de focus est teal, comme l'action principale. Sur un bouton
+     primaire lui aussi teal, un anneau collé au bord se confondrait avec le
+     bouton : le décalage sur la couleur de fond rétablit la séparation. */
+  :focus-visible {
+    outline-offset: 2px;
+  }
+
+  /* Le français attend une espace fine insécable avant les ponctuations
+     doubles. Le navigateur ne la pose pas seul : les libellés du produit
+     l'écrivent avec ` ` (voir `nbsp()` dans lib/format.ts), et cette règle
+     garantit qu'aucune ne se transforme en retour à la ligne. */
+  :where(h1, h2, h3, p, label, button, a, span) {
+    hanging-punctuation: first;
+  }
+
+  /* Respect du réglage système. Ce n'est pas une préférence esthétique : pour
+     une partie des utilisateurs, le mouvement déclenche des troubles
+     vestibulaires. On neutralise sans casser les transitions, qui deviennent
+     instantanées plutôt qu'absentes. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  /* Gabarit de page : borne la largeur du contenu et pose la gouttière.
+     Utilisé par le layout applicatif, jamais réimplémenté écran par écran. */
+  .page-container {
+    width: 100%;
+    max-width: var(--page-max);
+    margin-inline: auto;
+  }
+
+  /* Dégradé de marque, réservé aux surfaces d'accueil, écrans vides et barres
+     de progression. La règle du plan est explicite : jamais derrière du texte
+     de lecture. Le déclarer en utilitaire évite le `style={{…}}` recopié. */
+  .bg-brand-gradient {
+    background-image: var(--brand-gradient);
+  }
 }
