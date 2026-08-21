@@ -10,6 +10,7 @@ import { VariantComparisonPanel } from "./variant-comparison";
 import { EditProjectDialog, ProjectStatusActions } from "./project-actions";
 import { QuestionnaireBuilder } from "./questionnaire-builder";
 import { TeamEditor } from "./team-editor";
+import { LibelleFilAriane } from "@/components/fil-ariane";
 import { LienRetour } from "@/components/lien-retour";
 import { Notice } from "@/components/notice";
 import { PageHeader } from "@/components/page-header";
@@ -94,6 +95,10 @@ export default async function FicheProjetPage({
 
   return (
     <div className="space-y-6">
+      {/* Donne son nom réel au segment d'identifiant du fil d'Ariane :
+          « #12 » n'apprend rien à personne. */}
+      <LibelleFilAriane segment={String(projet.id)} nom={projet.name} />
+
       <LienRetour href="/projets" label="Tous les projets" />
 
       <PageHeader

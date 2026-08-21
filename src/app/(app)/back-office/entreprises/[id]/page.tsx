@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { CompanyActions } from "./company-actions";
 import { CompanyStatusBadge } from "@/components/company-status-badge";
+import { LibelleFilAriane } from "@/components/fil-ariane";
 import { LienRetour } from "@/components/lien-retour";
 import { Notice } from "@/components/notice";
 import { PageHeader } from "@/components/page-header";
@@ -58,6 +59,10 @@ export default async function FicheEntreprisePage({
 
   return (
     <div className="space-y-6">
+      {/* Donne son nom réel au segment d'identifiant du fil d'Ariane :
+          « #12 » n'apprend rien à personne. */}
+      <LibelleFilAriane segment={String(company.id)} nom={company.name} />
+
       <LienRetour
         href="/back-office/entreprises"
         label="Toutes les entreprises"

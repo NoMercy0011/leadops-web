@@ -13,6 +13,7 @@ import {
   NoteForm,
   StageSelector,
 } from "./prospect-actions";
+import { LibelleFilAriane } from "@/components/fil-ariane";
 import { LienRetour } from "@/components/lien-retour";
 import { Notice } from "@/components/notice";
 import { PageHeader } from "@/components/page-header";
@@ -86,6 +87,10 @@ export default async function FicheProspectPage({
 
   return (
     <div className="space-y-6">
+      {/* Donne son nom réel au segment d'identifiant du fil d'Ariane :
+          « #12 » n'apprend rien à personne. */}
+      <LibelleFilAriane segment={String(prospect.id)} nom={prospect.full_name} />
+
       <LienRetour href="/prospects" label="Tous les prospects" />
 
       <PageHeader
