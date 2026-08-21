@@ -1,12 +1,9 @@
-import Link from "next/link";
-import { Archive, Columns3, Users } from "lucide-react";
+import { Users } from "lucide-react";
 
-import { CreateProspectDialog } from "@/app/(app)/prospects/create-prospect-dialog";
 import { ProspectFilters } from "@/app/(app)/prospects/prospect-filters";
 import { ProspectSummaryStrip } from "@/app/(app)/prospects/prospect-summary";
 import { ProspectTable } from "@/app/(app)/prospects/prospect-table";
 import { EmptyState } from "@/components/empty-state";
-import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/dal";
 import { getProject, listCompanyUsers } from "@/lib/projects";
 import { listProspects } from "@/lib/prospects";
@@ -66,35 +63,10 @@ export default async function ProspectsDuProjetPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button asChild variant="outline" size="sm">
-          <Link href={`/prospects/kanban?project_id=${projectId}`}>
-            <Columns3 className="size-4" aria-hidden />
-            Kanban
-          </Link>
-        </Button>
-
-        <Button asChild variant={archives ? "secondary" : "outline"} size="sm">
-          <Link href={archives ? base : `${base}?archived=1`}>
-            <Archive className="size-4" aria-hidden />
-            {archives ? "Actifs" : "Archivés"}
-          </Link>
-        </Button>
-
-        <Button asChild variant="outline" size="sm">
-          <a href={`/api/prospects/export?project_id=${projectId}`}>Exporter</a>
-        </Button>
-
-        {/* Un projet fermé refuse les créations côté API : offrir le bouton
-            mènerait à un échec annoncé. */}
-        {projet.accepts_new_prospects ? (
-          <CreateProspectDialog
-            projets={[projet]}
-            utilisateurs={utilisateurs.data}
-            taille="sm"
-          />
-        ) : null}
-      </div>
+      {/* Kanban, Archivés, Exporter et Nouveau prospect ne sont pas ici : ils
+          remplissent l'emplacement `@actions` du layout, pour tenir dans la
+          même rangée que les actions du projet plutôt que d'ouvrir une
+          seconde barre de boutons. Voir `@actions/prospects/page.tsx`. */}
 
       {/* Les chiffres avant la liste : ils disent où porter l'attention, la
           liste dit sur qui. */}

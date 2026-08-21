@@ -74,6 +74,7 @@ export async function generateMetadata({
  */
 export default async function LayoutFicheProjet({
   children,
+  actions,
   params,
 }: LayoutProps<"/projets/[id]">) {
   const user = await requireUser();
@@ -131,6 +132,13 @@ export default async function LayoutFicheProjet({
             </p>
           </div>
 
+          {/* Une seule rangée pour les deux familles d'actions : celles du
+              projet, valables partout, puis celles de la section ouverte,
+              fournies par l'emplacement `@actions`. Empilées sur deux lignes,
+              elles coûtaient deux fois la hauteur pour un seul geste à faire ;
+              réunies, elles ne se replient que si la fenêtre l'impose. L'action
+              principale de la section ferme la marche, comme sur les autres
+              écrans du produit. */}
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             {/* L'import n'est proposé que si le projet accepte des prospects :
                 l'API le refuse sur un projet suspendu, terminé ou archivé, et
@@ -147,6 +155,8 @@ export default async function LayoutFicheProjet({
                 <ProjectStatusActions projet={projet} />
               </>
             ) : null}
+
+            {actions}
           </div>
         </header>
       </div>
