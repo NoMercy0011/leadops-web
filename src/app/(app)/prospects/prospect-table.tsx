@@ -6,6 +6,11 @@ import { AlarmClock, LoaderCircle, Phone, UserCog } from "lucide-react";
 import { toast } from "sonner";
 
 import { bulkAssign } from "./actions";
+import {
+  ArchiveProspectButton,
+  EditProspectDialog,
+} from "./[id]/edit-prospect-dialog";
+import { StagePopover } from "./stage-popover";
 import { NativeSelect } from "@/components/form-fields";
 import { StageChip } from "@/components/stage-chip";
 import { Button } from "@/components/ui/button";
@@ -21,7 +26,7 @@ import {
 } from "@/components/ui/table";
 import { formatDateHeure, formatDistance, formatNombre } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { Prospect, User } from "@/lib/types";
+import type { PipelineStage, Prospect, User } from "@/lib/types";
 
 /**
  * Liste des prospects, avec sélection pour la réaffectation en masse.
@@ -72,7 +77,9 @@ function ProchaineAction({
         clos && "line-through",
       )}
     >
-      {enRetard ? <AlarmClock className="size-3.5 shrink-0" aria-hidden /> : null}
+      {enRetard ? (
+        <AlarmClock className="size-3.5 shrink-0" aria-hidden />
+      ) : null}
       <time
         dateTime={prospect.next_action_at}
         title={
@@ -92,12 +99,23 @@ export function ProspectTable({
   peutReaffecter,
   fuseau,
   total,
+  etapes,
+  peutArchiver = false,
 }: {
   prospects: Prospect[];
   utilisateurs: User[];
   peutReaffecter: boolean;
   fuseau?: string;
   total: number;
+  /**
+   * Étapes du pipeline, quand la liste est bornée à un projet. Elles rendent
+   * la pastille d'étape modifiable sur place. Dans la liste globale, les
+   * prospects viennent de projets aux pipelines différents : il n'y a pas de
+   * jeu d'étapes commun à proposer, et la pastille reste en lecture seule.
+   */
+  etapes?: PipelineStage[];
+  /** Archiver relève de l'encadrement, comme l'affectation. */
+  peutArchiver?: boolean;
 }) {
   const [selection, setSelection] = useState<number[]>([]);
   const [destinataire, setDestinataire] = useState<string>("");
@@ -136,7 +154,10 @@ export function ProspectTable({
     <div className="space-y-3">
       {peutReaffecter && selection.length > 0 ? (
         <div className="border-border bg-accent/40 flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3">
-          <UserCog className="text-accent-foreground size-4 shrink-0" aria-hidden />
+          <UserCog
+            className="text-accent-foreground size-4 shrink-0"
+            aria-hidden
+          />
           <p className="text-sm font-medium">
             {formatNombre(selection.length)} sélectionné
             {selection.length > 1 ? "s" : ""}
@@ -193,7 +214,12 @@ export function ProspectTable({
                   <TableHead>Étape</TableHead>
                   <TableHead>Prochaine action</TableHead>
                   <TableHead>Commercial</TableHead>
-                  <TableHead className="text-right">Dernière interaction</TableHead>
+                  <TableHead className="text-right">
+                    Dernière interaction
+                  </TableHead>
+                  <TableHead className="w-20">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -203,7 +229,9 @@ export function ProspectTable({
                       <TableCell>
                         <Checkbox
                           checked={selection.includes(prospect.id)}
-                          onCheckedChange={(c) => basculer(prospect.id, c === true)}
+                          onCheckedChange={(c) =>
+                            basculer(prospect.id, c === true)
+                          }
                           aria-label={`Sélectionner ${prospect.full_name}`}
                         />
                       </TableCell>
@@ -250,7 +278,9 @@ export function ProspectTable({
                     </TableCell>
 
                     <TableCell>
-                      {prospect.stage ? (
+                      {etapes ? (
+                        <StagePopover prospect={prospect} etapes={etapes} />
+                      ) : prospect.stage ? (
                         <StageChip stage={prospect.stage} />
                       ) : null}
                     </TableCell>
@@ -283,6 +313,18 @@ export function ProspectTable({
                       ) : (
                         "—"
                       )}
+                    </TableCell>
+
+                    {/* Réduites à leurs pictogrammes : répétées sur trente
+                        lignes, deux libellés doubleraient la largeur du
+                        tableau pour deux mots déjà connus. Le nom du prospect
+                        est porté par `aria-label`, sans quoi une synthèse
+                        vocale annoncerait trente fois « Modifier ». */}
+                    <TableCell className="text-right whitespace-nowrap">
+                      <EditProspectDialog prospect={prospect} compact />
+                      {peutArchiver ? (
+                        <ArchiveProspectButton prospect={prospect} compact />
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}

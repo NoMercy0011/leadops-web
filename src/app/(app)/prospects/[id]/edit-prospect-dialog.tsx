@@ -69,7 +69,18 @@ function SubmitButton() {
  * premier n'est pas modifiable (il porte le pipeline et le questionnaire), la
  * seconde a son propre sélecteur, qui écrit au journal.
  */
-export function EditProspectDialog({ prospect }: { prospect: Prospect }) {
+export function EditProspectDialog({
+  prospect,
+  compact = false,
+}: {
+  prospect: Prospect;
+  /**
+   * Déclencheur réduit à son icône, pour une cellule de tableau. Le libellé
+   * passe alors dans `aria-label` et nomme le prospect : dans une liste de
+   * trente lignes, « Modifier » répété trente fois ne dit pas quoi.
+   */
+  compact?: boolean;
+}) {
   const [open, setOpen] = useState(false);
 
   const [state, formAction] = useActionState(
@@ -92,10 +103,21 @@ export function EditProspectDialog({ prospect }: { prospect: Prospect }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Pencil className="size-4" aria-hidden />
-          Modifier
-        </Button>
+        {compact ? (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="text-muted-foreground hover:text-foreground"
+            aria-label={`Modifier ${prospect.full_name}`}
+          >
+            <Pencil className="size-4" aria-hidden />
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm">
+            <Pencil className="size-4" aria-hidden />
+            Modifier
+          </Button>
+        )}
       </DialogTrigger>
 
       <DialogContent className="shadow-dialog sm:max-w-lg">
@@ -198,7 +220,14 @@ export function EditProspectDialog({ prospect }: { prospect: Prospect }) {
  * ressort. L'exiger transformerait un geste de rangement en formulaire, et il
  * serait rempli n'importe comment.
  */
-export function ArchiveProspectButton({ prospect }: { prospect: Prospect }) {
+export function ArchiveProspectButton({
+  prospect,
+  compact = false,
+}: {
+  prospect: Prospect;
+  /** Réduit au pictogramme, pour une cellule de tableau. */
+  compact?: boolean;
+}) {
   const [pending, setPending] = useState(false);
   const [motif, setMotif] = useState("");
   const [open, setOpen] = useState(false);
@@ -221,10 +250,14 @@ export function ArchiveProspectButton({ prospect }: { prospect: Prospect }) {
   if (prospect.is_archived) {
     return (
       <Button
-        variant="outline"
-        size="sm"
+        variant={compact ? "ghost" : "outline"}
+        size={compact ? "icon-sm" : "sm"}
         disabled={pending}
         aria-busy={pending}
+        aria-label={compact ? `Désarchiver ${prospect.full_name}` : undefined}
+        className={
+          compact ? "text-muted-foreground hover:text-foreground" : undefined
+        }
         onClick={() => void basculer(false)}
       >
         {pending ? (
@@ -232,7 +265,7 @@ export function ArchiveProspectButton({ prospect }: { prospect: Prospect }) {
         ) : (
           <ArchiveRestore className="size-4" aria-hidden />
         )}
-        Désarchiver
+        {compact ? null : "Désarchiver"}
       </Button>
     );
   }
@@ -242,12 +275,13 @@ export function ArchiveProspectButton({ prospect }: { prospect: Prospect }) {
       <AlertDialogTrigger asChild>
         <Button
           variant="ghost"
-          size="sm"
+          size={compact ? "icon-sm" : "sm"}
           className="text-muted-foreground hover:text-foreground duration-(--duration-fast) ease-brand transition-colors"
           disabled={pending}
+          aria-label={compact ? `Archiver ${prospect.full_name}` : undefined}
         >
           <Archive className="size-4" aria-hidden />
-          Archiver
+          {compact ? null : "Archiver"}
         </Button>
       </AlertDialogTrigger>
 

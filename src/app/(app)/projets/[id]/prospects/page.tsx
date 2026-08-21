@@ -127,8 +127,13 @@ export default async function ProspectsDuProjetPage({
           prospects={prospects.data}
           utilisateurs={utilisateurs.data}
           peutReaffecter={encadrement}
+          peutArchiver={encadrement}
           fuseau={user.company?.timezone}
           total={prospects.meta.total}
+          // Tous les prospects de cet écran partagent un pipeline : l'étape
+          // se change donc depuis la liste, sans ouvrir chaque fiche. C'est
+          // impossible sur la liste globale, où les projets diffèrent.
+          etapes={projet.stages ?? []}
         />
       )}
     </div>
