@@ -91,6 +91,7 @@ export default async function ProspectsDuProjetPage({
           <CreateProspectDialog
             projets={[projet]}
             utilisateurs={utilisateurs.data}
+            taille="sm"
           />
         ) : null}
       </div>

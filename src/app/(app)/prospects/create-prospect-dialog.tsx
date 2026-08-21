@@ -55,9 +55,19 @@ function SubmitButton() {
 export function CreateProspectDialog({
   projets,
   utilisateurs,
+  taille = "default",
 }: {
   projets: Project[];
   utilisateurs: User[];
+  /**
+   * Hauteur du déclencheur, comme sur `ImportDialog`.
+   *
+   * Sur `/prospects` le bouton est seul en tête d'écran et garde sa taille
+   * pleine. Dans l'onglet Prospects d'un projet, il rejoint une rangée de
+   * boutons `sm` — Kanban, Archivés, Exporter — où il dépassait d'un cran,
+   * seul élément désaligné de la ligne.
+   */
+  taille?: "default" | "sm";
 }) {
   const [open, setOpen] = useState(false);
 
@@ -81,7 +91,7 @@ export function CreateProspectDialog({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button>
+        <Button size={taille === "sm" ? "sm" : "default"}>
           <Plus className="size-4" aria-hidden />
           Nouveau prospect
         </Button>
