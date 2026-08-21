@@ -31,6 +31,14 @@ interface Props {
   question: Question;
   valeur: Valeur;
   erreur?: string;
+  /**
+   * Question obligatoire encore sans réponse.
+   *
+   * Distinct de `erreur` : celle-ci vient du serveur après un refus, celui-ci
+   * se voit avant même d'essayer. Le rendu reste discret — un repère, pas une
+   * erreur — car ne pas avoir encore rempli un champ n'est pas une faute.
+   */
+  manquante?: boolean;
   onChange: (valeur: Valeur) => void;
   disabled?: boolean;
 }
@@ -48,15 +56,32 @@ export function QuestionField({
   question,
   valeur,
   erreur,
+  manquante,
   onChange,
   disabled,
 }: Props) {
   const id = `question-${question.id}`;
+
+  /**
+   * Le repère « à renseigner » se substitue à la mention « facultatif » du
+   * champ partagé : les deux ne peuvent pas coexister, une question étant soit
+   * obligatoire soit facultative. Il passe par l'aide plutôt que par un style
+   * propre, pour rester lisible par une synthèse vocale via aria-describedby.
+   */
+  const aide =
+    manquante && !erreur ? (
+      <span className="text-warning-subtle-foreground font-medium">
+        À renseigner{question.help ? ` — ${question.help}` : ""}
+      </span>
+    ) : (
+      (question.help ?? undefined)
+    );
+
   const commun = {
     id,
     label: question.label,
     erreur,
-    aide: question.help ?? undefined,
+    aide,
     optionnel: !question.required,
     disabled,
   };
@@ -135,9 +160,7 @@ export function QuestionField({
           ))}
         </RadioGroup>
 
-        {question.help ? (
-          <FieldDescription>{question.help}</FieldDescription>
-        ) : null}
+        {aide ? <FieldDescription>{aide}</FieldDescription> : null}
         <FieldError>{erreur}</FieldError>
       </Field>
     );
@@ -182,9 +205,7 @@ export function QuestionField({
           ))}
         </div>
 
-        {question.help ? (
-          <FieldDescription>{question.help}</FieldDescription>
-        ) : null}
+        {aide ? <FieldDescription>{aide}</FieldDescription> : null}
         <FieldError>{erreur}</FieldError>
       </Field>
     );
@@ -220,9 +241,7 @@ export function QuestionField({
           ))}
         </RadioGroup>
 
-        {question.help ? (
-          <FieldDescription>{question.help}</FieldDescription>
-        ) : null}
+        {aide ? <FieldDescription>{aide}</FieldDescription> : null}
         <FieldError>{erreur}</FieldError>
       </Field>
     );
@@ -242,9 +261,7 @@ export function QuestionField({
           {question.label}
         </label>
       </div>
-      {question.help ? (
-        <FieldDescription>{question.help}</FieldDescription>
-      ) : null}
+      {aide ? <FieldDescription>{aide}</FieldDescription> : null}
       <FieldError>{erreur}</FieldError>
     </Field>
   );
