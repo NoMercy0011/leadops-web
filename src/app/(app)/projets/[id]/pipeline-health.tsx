@@ -77,7 +77,7 @@ export function PipelineHealthPanel({ sante }: { sante: PipelineHealth }) {
 
               <td>
                 <div className="flex items-center gap-2">
-                  <div className="bg-muted h-5 flex-1 overflow-hidden rounded-sm">
+                  <div className="bg-muted h-3 flex-1 overflow-hidden rounded-sm">
                     <div
                       className="bg-primary h-full rounded-sm"
                       style={{

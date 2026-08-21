@@ -85,7 +85,7 @@ export function VariantComparisonPanel({
 
               <td>
                 <div className="flex items-center gap-2">
-                  <div className="bg-muted h-5 flex-1 overflow-hidden rounded-sm">
+                  <div className="bg-muted h-3 flex-1 overflow-hidden rounded-sm">
                     <div
                       className={cn(
                         "h-full rounded-sm",
