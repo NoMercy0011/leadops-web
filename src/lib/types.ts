@@ -60,7 +60,19 @@ export interface User {
   company?: Company;
 }
 
-export type ProjectStatus = "active" | "suspended" | "completed";
+/**
+ * Statut d'un projet.
+ *
+ * « Archivé » remplace la suppression, qui n'existe pas côté API : les clés
+ * étrangères sont en cascade et un projet effacé emporterait ses prospects,
+ * leur historique et leurs rendez-vous. Distinct de « Terminé », qui dit
+ * qu'un projet est allé à son terme — un projet abandonné ne l'est pas.
+ */
+export type ProjectStatus =
+  | "active"
+  | "suspended"
+  | "completed"
+  | "archived";
 
 /**
  * Jeu restreint de couleurs d'étapes, fixé côté API.

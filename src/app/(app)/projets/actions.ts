@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { ApiError, apiFetch } from "@/lib/api";
-import type { StageColor } from "@/lib/types";
+import type { ProjectStatus, StageColor } from "@/lib/types";
 
 const BASE_PATH = "/projets";
 
@@ -84,6 +84,98 @@ export async function createProject(
   revalidatePath(BASE_PATH);
 
   return { success: `Le projet « ${parsed.data.name} » a été créé avec son pipeline.` };
+}
+
+/**
+ * Modification d'un projet.
+ *
+ * Le statut n'y figure pas : il a son propre point d'entrée, parce que changer
+ * un projet d'état est un geste à conséquence — un projet qui n'est plus actif
+ * refuse les nouveaux prospects — alors que corriger un libellé n'en a aucune.
+ * Les mêler dans un formulaire ferait passer le premier pour le second.
+ */
+export async function updateProject(
+  projectId: number,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const brut = Object.fromEntries(formData);
+
+  const parsed = projectSchema.safeParse({
+    ...brut,
+    // Un <select> vide renvoie une chaîne vide, que `coerce.number`
+    // convertirait en 0 — un identifiant invalide.
+    variant_id: brut.variant_id === "" ? undefined : brut.variant_id,
+  });
+
+  if (!parsed.success) {
+    const flat = z.flattenError(parsed.error);
+
+    return {
+      fieldErrors: Object.fromEntries(
+        Object.entries(flat.fieldErrors).map(([champ, messages]) => [
+          champ,
+          messages?.[0] ?? "",
+        ]),
+      ),
+    };
+  }
+
+  try {
+    await apiFetch(`/projects/${projectId}`, {
+      method: "PATCH",
+      // Les champs vidés partent à `null` et non omis : sans cela, effacer une
+      // description ne l'effacerait jamais, la règle `sometimes` de Laravel
+      // ignorant les clés absentes.
+      body: {
+        ...parsed.data,
+        product: parsed.data.product || null,
+        target: parsed.data.target || null,
+        description: parsed.data.description || null,
+        variant_id: parsed.data.variant_id ?? null,
+      },
+    });
+  } catch (error) {
+    return toState(error);
+  }
+
+  revalidatePath(BASE_PATH, "layout");
+
+  return { success: "Projet mis à jour." };
+}
+
+/**
+ * Changement d'état d'un projet.
+ *
+ * Il n'existe pas de suppression, côté API comme ici : les clés étrangères
+ * sont en cascade et un projet effacé emporterait ses prospects, leur journal
+ * d'activités et leurs rendez-vous, sans retour possible. « Archivé » est le
+ * geste correspondant — il sort le projet des listes sans rien détruire, et se
+ * défait.
+ */
+export async function changeProjectStatus(
+  projectId: number,
+  statut: ProjectStatus,
+): Promise<ActionState> {
+  try {
+    await apiFetch(`/projects/${projectId}`, {
+      method: "PATCH",
+      body: { status: statut },
+    });
+  } catch (error) {
+    return toState(error);
+  }
+
+  revalidatePath(BASE_PATH, "layout");
+
+  const messages: Record<ProjectStatus, string> = {
+    active: "Projet réactivé : il accepte de nouveau des prospects.",
+    suspended: "Projet suspendu : les données restent consultables.",
+    completed: "Projet marqué terminé.",
+    archived: "Projet archivé : il quitte la liste, rien n'est supprimé.",
+  };
+
+  return { success: messages[statut] };
 }
 
 export async function addStage(

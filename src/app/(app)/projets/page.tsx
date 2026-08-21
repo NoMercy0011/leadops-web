@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FolderKanban } from "lucide-react";
+import { Archive, FolderKanban } from "lucide-react";
 
 import { CreateProjectDialog } from "./create-project-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { StageChip } from "@/components/stage-chip";
 import { StatusBadge, type Tone } from "@/components/status-badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { listProjects, listVariants } from "@/lib/projects";
 import { requireUser } from "@/lib/dal";
@@ -24,13 +25,22 @@ const TONS: Record<ProjectStatus, Tone> = {
   active: "success",
   suspended: "warning",
   completed: "neutral",
+  archived: "neutral",
 };
 
-export default async function ProjetsPage() {
+export default async function ProjetsPage({
+  searchParams,
+}: PageProps<"/projets">) {
   const user = await requireUser();
+  const params = await searchParams;
+
+  // L'API écarte les projets archivés par défaut ; les demander explicitement
+  // est le seul moyen de les revoir. C'est ce que fait cette bascule — sans
+  // elle, archiver reviendrait à perdre le projet de vue pour de bon.
+  const archives = params.status === "archived";
 
   const [projets, variantes] = await Promise.all([
-    listProjects(),
+    listProjects(archives ? { status: "archived" } : {}),
     listVariants(),
   ]);
 
@@ -41,23 +51,49 @@ export default async function ProjetsPage() {
       <PageHeader
         titre="Projets"
         description={
-          user.role === "admin_client"
+          peutCreer
             ? "Chaque projet porte sa cible, sa variante, son questionnaire et son propre pipeline."
-            : "Les projets sur lesquels vous êtes affecté."
+            : // Sans cette phrase, un manager cherche un bouton de création qui
+              // n'apparaîtra jamais et croit à un défaut d'affichage.
+              "Les projets sur lesquels vous êtes affecté. Leur création revient à l'Admin Client : elle engage le pipeline et le questionnaire de toute l'équipe."
         }
         actions={
-          peutCreer ? <CreateProjectDialog variantes={variantes} /> : undefined
+          <>
+            <Button asChild variant={archives ? "secondary" : "outline"}>
+              <Link href={archives ? "/projets" : "/projets?status=archived"}>
+                <Archive className="size-4" aria-hidden />
+                {archives ? "Projets actifs" : "Archivés"}
+              </Link>
+            </Button>
+            {peutCreer ? <CreateProjectDialog variantes={variantes} /> : null}
+          </>
         }
       />
 
       {projets.data.length === 0 ? (
         <EmptyState
-          icon={FolderKanban}
-          titre={peutCreer ? "Aucun projet pour l'instant" : "Aucun projet affecté"}
+          icon={archives ? Archive : FolderKanban}
+          titre={
+            archives
+              ? "Aucun projet archivé"
+              : peutCreer
+                ? "Aucun projet pour l'instant"
+                : "Aucun projet affecté"
+          }
           description={
-            peutCreer
-              ? "Créez un premier projet : son pipeline est posé d'office et reste entièrement modifiable."
-              : "Votre administrateur ne vous a pas encore affecté à un projet."
+            archives
+              ? "Les projets que vous archiverez apparaîtront ici. Rien n'y est supprimé."
+              : peutCreer
+                ? "Créez un premier projet : son pipeline est posé d'office et reste entièrement modifiable."
+                : "Votre administrateur ne vous a pas encore affecté à un projet."
+          }
+          // L'écran vide invitait à créer un projet sans porter le bouton : il
+          // fallait remonter à l'en-tête pour le trouver. Un écran vide dont
+          // tout le propos est l'absence doit porter l'action qui la comble.
+          action={
+            peutCreer && !archives ? (
+              <CreateProjectDialog variantes={variantes} />
+            ) : undefined
           }
         />
       ) : (
