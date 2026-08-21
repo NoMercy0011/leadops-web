@@ -4,6 +4,7 @@ import { Mail, MapPin, Phone } from "lucide-react";
 
 import { ActivityTimeline } from "./activity-timeline";
 import {
+  ArchiveProspectButton,
   DeleteProspectButton,
   EditProspectDialog,
 } from "./edit-prospect-dialog";
@@ -116,6 +117,10 @@ export default async function FicheProspectPage({
 
             <EditProspectDialog prospect={prospect} />
 
+            {/* Archiver relève de l'encadrement : sortir un dossier des
+                statistiques ne doit pas revenir à celui qu'elles mesurent. */}
+            {encadrement ? <ArchiveProspectButton prospect={prospect} /> : null}
+
             {/* La policy réserve la suppression à l'Admin Client. Le bouton
                 n'est masqué que par confort de lecture : c'est l'API qui
                 tranche, et elle refuserait l'appel de toute façon. */}
@@ -125,6 +130,14 @@ export default async function FicheProspectPage({
           </>
         }
       />
+
+      {prospect.is_archived ? (
+        <Notice variant="info" titre="Prospect archivé">
+          Il ne figure plus dans les listes et sort de tous les taux —
+          conversion, qualification, perte. Ses données restent intactes et
+          l&apos;archivage se défait.
+        </Notice>
+      ) : null}
 
       {relanceEnRetard ? (
         <Notice variant="warning" titre="Relance en retard">

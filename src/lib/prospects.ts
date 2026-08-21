@@ -18,6 +18,8 @@ export interface ProspectFilters {
   /** `"none"` filtre les prospects non affectés. */
   assigned_user_id?: string;
   search?: string;
+  /** Ne retient que les prospects archivés. */
+  archived?: string;
   per_page?: number;
 }
 

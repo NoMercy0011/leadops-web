@@ -3,11 +3,23 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, Pencil, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  LoaderCircle,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
-import { deleteProspect, updateProspect, type ActionState } from "../actions";
+import {
+  archiveProspect,
+  deleteProspect,
+  updateProspect,
+  type ActionState,
+} from "../actions";
 import { ChampTexte } from "@/components/form-fields";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -171,6 +183,118 @@ export function EditProspectDialog({ prospect }: { prospect: Prospect }) {
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Range un prospect hors du pipeline actif, ou l'y ramène.
+ *
+ * **Distinct de « Perdu ».** Un contact injoignable depuis six mois n'a pas
+ * été perdu, il n'a jamais commencé — le compter comme perdu ferait mentir le
+ * taux de perte, qui est un résultat commercial et non un classement.
+ *
+ * Le motif est demandé mais facultatif : six mois plus tard, « injoignable »
+ * et « doublon de la ligne 42 » n'appellent pas la même décision si le dossier
+ * ressort. L'exiger transformerait un geste de rangement en formulaire, et il
+ * serait rempli n'importe comment.
+ */
+export function ArchiveProspectButton({ prospect }: { prospect: Prospect }) {
+  const [pending, setPending] = useState(false);
+  const [motif, setMotif] = useState("");
+  const [open, setOpen] = useState(false);
+
+  async function basculer(archive: boolean) {
+    setPending(true);
+    const resultat = await archiveProspect(prospect.id, archive, motif);
+
+    setPending(false);
+    setOpen(false);
+    setMotif("");
+
+    if (resultat.success) toast.success(resultat.success);
+    if (resultat.message) toast.error(resultat.message);
+  }
+
+  // Désarchiver ne demande pas confirmation : le geste est anodin et se
+  // défait aussitôt. Archiver en demande une, parce que le dossier quitte les
+  // listes et qu'il faut savoir où le retrouver.
+  if (prospect.is_archived) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={pending}
+        aria-busy={pending}
+        onClick={() => void basculer(false)}
+      >
+        {pending ? (
+          <LoaderCircle className="size-4 animate-spin" aria-hidden />
+        ) : (
+          <ArchiveRestore className="size-4" aria-hidden />
+        )}
+        Désarchiver
+      </Button>
+    );
+  }
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground hover:text-foreground duration-(--duration-fast) ease-brand transition-colors"
+          disabled={pending}
+        >
+          <Archive className="size-4" aria-hidden />
+          Archiver
+        </Button>
+      </AlertDialogTrigger>
+
+      <AlertDialogContent className="shadow-dialog">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Archiver « {prospect.full_name} » ?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Le prospect quitte les listes et sort de tous les taux — conversion,
+            qualification, perte. Rien n&apos;est supprimé : sa fiche et son
+            historique restent consultables, et l&apos;opération se défait.
+            Préférez «&nbsp;Perdu&nbsp;» si l&apos;affaire a réellement échoué.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <div className="space-y-2 py-1">
+          <label htmlFor="motif-archivage" className="text-sm font-medium">
+            Motif <span className="text-muted-foreground font-normal">facultatif</span>
+          </label>
+          <Textarea
+            id="motif-archivage"
+            rows={2}
+            value={motif}
+            onChange={(event) => setMotif(event.target.value)}
+            placeholder="Injoignable depuis six mois."
+          />
+          <p className="text-muted-foreground text-xs">
+            Conservé au journal du prospect : il aidera à décider si le dossier
+            ressort.
+          </p>
+        </div>
+
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={pending}>Annuler</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={pending}
+            onClick={(event) => {
+              // Sans ceci, Radix referme la boîte et démonte le bouton avant
+              // que l'action serveur ne parte.
+              event.preventDefault();
+              void basculer(true);
+            }}
+          >
+            Archiver
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 

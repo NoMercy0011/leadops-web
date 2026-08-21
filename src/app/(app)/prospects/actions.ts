@@ -199,6 +199,39 @@ export async function deleteProspect(prospectId: number): Promise<ActionState> {
   return { success: "Prospect supprimé." };
 }
 
+/**
+ * Range un prospect hors du pipeline actif, ou l'y ramène.
+ *
+ * Distinct de « Perdu », qui est un résultat commercial : un contact
+ * injoignable depuis six mois n'a pas été perdu, il n'a jamais commencé.
+ * Le compter comme perdu ferait mentir le taux de perte.
+ *
+ * Rien n'est supprimé — la fiche reste consultable, son journal intact, et
+ * le geste se défait.
+ */
+export async function archiveProspect(
+  prospectId: number,
+  archive: boolean,
+  motif?: string,
+): Promise<ActionState> {
+  try {
+    await apiFetch(`/prospects/${prospectId}/archive`, {
+      method: "PATCH",
+      body: { archived: archive, motif: motif?.trim() || null },
+    });
+  } catch (error) {
+    return toState(error);
+  }
+
+  revaliderProspects();
+
+  return {
+    success: archive
+      ? "Prospect archivé : il quitte les listes et les taux, rien n'est supprimé."
+      : "Prospect remis dans le pipeline actif.",
+  };
+}
+
 export async function changeStage(
   prospectId: number,
   stageId: number,

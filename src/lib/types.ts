@@ -145,6 +145,13 @@ export interface Prospect {
   notes: string | null;
   next_action_at: string | null;
   next_action_note: string | null;
+  /**
+   * Rangé hors du pipeline actif — distinct de « perdu », qui est un
+   * résultat commercial. Un prospect archivé sort des listes et de tous les
+   * taux, mais reste consultable par son adresse.
+   */
+  archived_at: string | null;
+  is_archived: boolean;
   converted_at: string | null;
   lost_at: string | null;
   /** Dérivée du journal côté API, jamais stockée. */

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Columns3, Users } from "lucide-react";
+import { Archive, Columns3, Users } from "lucide-react";
 
 import { CreateProspectDialog } from "./create-prospect-dialog";
 import { ImportDialog } from "./import-dialog";
@@ -36,6 +36,9 @@ export default async function ProspectsPage({
           ? filtres.assigned_user_id
           : undefined,
       search: typeof filtres.search === "string" ? filtres.search : undefined,
+      // L'API écarte les archivés par défaut ; les demander explicitement est
+      // le seul moyen de les revoir.
+      archived: filtres.archived === "1" ? "1" : undefined,
     }),
     listProjects(),
     // La liste des commerciaux ne sert qu'aux actions d'encadrement.
@@ -47,6 +50,7 @@ export default async function ProspectsPage({
     : undefined;
 
   const aucunProjet = projets.data.length === 0;
+  const archives = filtres.archived === "1";
 
   // Les filtres courants, pour que les tuiles cliquables du résumé restreignent
   // la sélection au lieu de la remplacer.
@@ -77,6 +81,12 @@ export default async function ProspectsPage({
                 </Link>
               </Button>
               {encadrement ? <ImportDialog projets={projets.data} /> : null}
+              <Button asChild variant={archives ? "secondary" : "outline"}>
+                <Link href={archives ? "/prospects" : "/prospects?archived=1"}>
+                  <Archive className="size-4" aria-hidden />
+                  {archives ? "Actifs" : "Archivés"}
+                </Link>
+              </Button>
               <Button asChild variant="outline">
                 <a
                   href={`/api/prospects/export${projectId ? `?project_id=${projectId}` : ""}`}
