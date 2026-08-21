@@ -93,7 +93,11 @@ export function OngletsProjet({
                 href={href}
                 aria-current={actif ? "page" : undefined}
                 className={cn(
-                  "duration-(--duration-fast) ease-brand flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm whitespace-nowrap transition-colors",
+                  // Resserré : la barre est le cadre, pas le contenu. Le texte
+                  // reste en `text-sm` — le rétrécir aussi rendrait la
+                  // navigation moins lisible que ce qu'elle encadre, ce qui
+                  // n'économiserait que quelques pixels pour un vrai coût.
+                  "duration-(--duration-fast) ease-brand flex items-center gap-1.5 border-b-2 px-2.5 py-1.5 text-sm whitespace-nowrap transition-colors",
                   "focus-visible:ring-ring rounded-t-sm focus-visible:ring-2 focus-visible:outline-none",
                   actif
                     ? "border-primary text-foreground font-medium"
@@ -101,7 +105,7 @@ export function OngletsProjet({
                 )}
               >
                 <Icone
-                  className={cn("size-4", actif ? "text-primary" : undefined)}
+                  className={cn("size-3.5", actif ? "text-primary" : undefined)}
                   aria-hidden
                 />
                 {onglet.libelle}

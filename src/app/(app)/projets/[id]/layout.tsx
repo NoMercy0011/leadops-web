@@ -5,9 +5,7 @@ import { OngletsProjet } from "./onglets-projet";
 import { EditProjectDialog, ProjectStatusActions } from "./project-actions";
 import { ImportDialog } from "@/app/(app)/prospects/import-dialog";
 import { LibelleFilAriane } from "@/components/fil-ariane";
-import { LienRetour } from "@/components/lien-retour";
 import { Notice } from "@/components/notice";
-import { PageHeader } from "@/components/page-header";
 import { StatusBadge, type Tone } from "@/components/status-badge";
 import { ApiError } from "@/lib/api";
 import { requireUser } from "@/lib/dal";
@@ -96,23 +94,44 @@ export default async function LayoutFicheProjet({
           « #12 » n'apprend rien à personne. */}
       <LibelleFilAriane segment={String(projet.id)} nom={projet.name} />
 
-      <LienRetour href="/projets" label="Tous les projets" />
+      {/* Bandeau d'identité, resserré.
 
-      <PageHeader
-        titre={projet.name}
-        description={
-          <>
-            {projet.product ?? "Produit non renseigné"}
-            {projet.target ? ` · Cible : ${projet.target}` : null}
-            {projet.variant ? ` · Variante : ${projet.variant.name}` : null}
-          </>
-        }
-        actions={
-          <>
-            <StatusBadge tone={TONS[projet.status]}>
-              {projet.status_label}
-            </StatusBadge>
+          La navigation passe au-dessus du titre : c'est elle qu'on vient
+          chercher en revenant sur la fiche, alors que le nom du projet est
+          déjà connu de qui a cliqué pour l'ouvrir. Le titre et ses actions
+          restent juste en dessous, dans une seule ligne d'un cran plus petite
+          que l'en-tête commun du produit — cinq sections gagnent à ce que le
+          cadre coûte quelques dizaines de pixels, pas deux cents. */}
+      <div className="space-y-3">
+        {/* Le plan et les plafonds sont une affaire de gestion : l'API en
+            réserve la lecture à l'Admin Client, l'onglet ne lui est donc
+            proposé qu'à lui. Seules des données franchissent la frontière —
+            une icône est une fonction, que rien ne saurait sérialiser. */}
+        <OngletsProjet projectId={projet.id} avecAbonnement={editable} />
 
+        <header className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-0.5">
+            <div className="flex min-w-0 items-center gap-2">
+              <h1 className="font-heading truncate text-lg font-semibold tracking-tight">
+                {projet.name}
+              </h1>
+
+              {/* L'état qualifie le projet, il ne s'actionne pas : sa place
+                  est contre le titre, pas dans la rangée de boutons où il
+                  se lisait comme une commande de plus. */}
+              <StatusBadge tone={TONS[projet.status]}>
+                {projet.status_label}
+              </StatusBadge>
+            </div>
+
+            <p className="text-muted-foreground text-xs leading-snug">
+              {projet.product ?? "Produit non renseigné"}
+              {projet.target ? ` · Cible : ${projet.target}` : null}
+              {projet.variant ? ` · Variante : ${projet.variant.name}` : null}
+            </p>
+          </div>
+
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             {/* L'import n'est proposé que si le projet accepte des prospects :
                 l'API le refuse sur un projet suspendu, terminé ou archivé, et
                 offrir le bouton mènerait à un échec annoncé. */}
@@ -128,12 +147,12 @@ export default async function LayoutFicheProjet({
                 <ProjectStatusActions projet={projet} />
               </>
             ) : null}
-          </>
-        }
-      />
+          </div>
+        </header>
+      </div>
 
       {/* L'état du projet conditionne la lecture de toutes les sections : il
-          se dit une fois, au-dessus des onglets, plutôt que répété dans
+          se dit une fois, au-dessus du contenu, plutôt que répété dans
           chacune. */}
       {projet.status === "archived" ? (
         <Notice variant="info" titre="Projet archivé">
@@ -146,12 +165,6 @@ export default async function LayoutFicheProjet({
           Les données existantes restent consultables et exportables.
         </Notice>
       ) : null}
-
-      {/* Le plan et les plafonds sont une affaire de gestion : l'API en
-          réserve la lecture à l'Admin Client, l'onglet ne lui est donc proposé
-          qu'à lui. Seules des données franchissent la frontière — une icône
-          est une fonction, que rien ne saurait sérialiser. */}
-      <OngletsProjet projectId={projet.id} avecAbonnement={editable} />
 
       {children}
     </div>
