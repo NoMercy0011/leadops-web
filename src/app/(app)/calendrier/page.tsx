@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { CalendarDays } from "lucide-react";
 
+import { AgendaSummary } from "./agenda-summary";
 import { CalendarControls } from "./calendar-controls";
 import { AgendaList, MonthGrid } from "./month-grid";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { resumeAgenda } from "@/lib/agenda";
 import { listAppointments } from "@/lib/appointments";
 import { requireUser } from "@/lib/dal";
 import { aujourdhui } from "@/lib/format";
@@ -98,6 +100,11 @@ export default async function CalendrierPage({
 
   const [annee, mois] = ancre.split("-").map(Number);
 
+  const resume = resumeAgenda(rendezVous, {
+    fuseau,
+    ceJour: aujourdhui({ timeZone: fuseau }),
+  });
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -116,6 +123,10 @@ export default async function CalendrierPage({
         projets={projets.data}
         utilisateurs={utilisateurs.data}
       />
+
+      {/* Les chiffres avant la grille : sans eux, un rendez-vous passé resté
+          « planifié » se découvre en parcourant les semaines une à une. */}
+      {rendezVous.length > 0 ? <AgendaSummary resume={resume} /> : null}
 
       {rendezVous.length === 0 ? (
         <EmptyState

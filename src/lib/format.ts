@@ -224,6 +224,38 @@ export function aujourdhui({ timeZone }: OptionsDate = {}): string {
   return cleJour(new Date(), { timeZone });
 }
 
+/**
+ * Instant UTC → valeur d'un champ `datetime-local`.
+ *
+ * **Seule fonction de ce module qui n'emploie pas le fuseau de l'entreprise**,
+ * et c'est délibéré. Un `<input type="datetime-local">` ne porte pas de
+ * fuseau : sa valeur est relue par `new Date(...)`, qui l'interprète dans
+ * celui du navigateur. Composer la valeur par défaut dans le fuseau de
+ * l'entreprise et la relire dans celui du navigateur décalerait le rendez-vous
+ * du seul fait de rouvrir le formulaire sans rien changer — le pire genre de
+ * bug, silencieux et déclenché par une non-action.
+ *
+ * L'aller et le retour passent donc tous deux par le fuseau du navigateur, ce
+ * qui rend l'opération réversible. L'hypothèse assumée en amont — le poste du
+ * commercial est réglé sur le fuseau de son entreprise — reste la même que
+ * celle de la planification.
+ */
+export function versDatetimeLocal(valeur: string | null | undefined): string {
+  const date = analyser(valeur);
+
+  if (!date) {
+    return "";
+  }
+
+  const deuxChiffres = (n: number) => String(n).padStart(2, "0");
+
+  return (
+    `${date.getFullYear()}-${deuxChiffres(date.getMonth() + 1)}-` +
+    `${deuxChiffres(date.getDate())}T${deuxChiffres(date.getHours())}:` +
+    `${deuxChiffres(date.getMinutes())}`
+  );
+}
+
 /** Initiales pour un avatar sans photo : « Andry Nantenaina » → « AN ». */
 export function initiales(nom: string): string {
   return nom
