@@ -45,6 +45,7 @@ export type Tone = NonNullable<VariantProps<typeof statusBadgeVariants>["tone"]>
 export function StatusBadge({
   tone,
   point = true,
+  pulse = false,
   className,
   children,
   ...props
@@ -52,20 +53,39 @@ export function StatusBadge({
   VariantProps<typeof statusBadgeVariants> & {
     /** Pastille de couleur devant le libellé. */
     point?: boolean;
+    /**
+     * Fait battre la pastille — un état *en cours*, pas un état quelconque.
+     *
+     * Réservé aux emplacements où l'état conditionne la lecture de tout
+     * l'écran : l'aplat vert clair est très pâle en thème clair (#e9f2e9), et
+     * un projet actif s'y efface au point qu'on ne sait plus s'il l'est.
+     *
+     * En option explicite, et non sur toute la tonalité `success` : les
+     * étapes gagnantes du tableau des prospects la partagent, et une douzaine
+     * de pastilles clignotantes ne signalerait plus rien du tout.
+     */
+    pulse?: boolean;
   }) {
   return (
-    <span
-      className={cn(statusBadgeVariants({ tone }), className)}
-      {...props}
-    >
+    <span className={cn(statusBadgeVariants({ tone }), className)} {...props}>
       {point ? (
         // La couleur seule ne peut pas porter l'information — daltonisme, et
         // impression en noir et blanc. Le libellé reste donc toujours présent,
         // la pastille n'étant qu'un repère de balayage visuel.
-        <span
-          aria-hidden
-          className="size-1.5 shrink-0 rounded-full bg-current opacity-70"
-        />
+        <span aria-hidden className="relative flex size-1.5 shrink-0">
+          {pulse ? (
+            // L'onde part de la pastille et se dissipe. `motion-reduce` la
+            // coupe : une animation qui se répète sans fin est précisément ce
+            // que ce réglage système demande d'éviter.
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-current opacity-75 motion-reduce:hidden" />
+          ) : null}
+          <span
+            className={cn(
+              "relative inline-flex size-full rounded-full bg-current",
+              pulse ? "opacity-100" : "opacity-70",
+            )}
+          />
+        </span>
       ) : null}
       {children}
     </span>

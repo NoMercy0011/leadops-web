@@ -116,8 +116,18 @@ export default async function LayoutFicheProjet({
 
             {/* L'état qualifie le projet, il ne s'actionne pas : sa place est
                 contre le titre, pas dans la rangée de boutons où il se lisait
-                comme une commande de plus. */}
-            <StatusBadge tone={TONS[projet.status]}>
+                comme une commande de plus.
+
+                La pastille bat quand le projet est actif : l'aplat vert clair
+                est très pâle en thème clair, et « Actif » s'y effaçait au
+                point qu'on ne savait plus s'il l'était. Les autres états sont
+                des arrêts, pas un fonctionnement en cours — ils n'ont rien à
+                signaler du coin de l'œil, et le bandeau qui suit les explique
+                déjà. */}
+            <StatusBadge
+              tone={TONS[projet.status]}
+              pulse={projet.status === "active"}
+            >
               {projet.status_label}
             </StatusBadge>
           </div>
