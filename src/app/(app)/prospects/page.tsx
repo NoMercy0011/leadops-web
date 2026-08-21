@@ -5,6 +5,7 @@ import { Columns3, Users } from "lucide-react";
 import { CreateProspectDialog } from "./create-prospect-dialog";
 import { ImportDialog } from "./import-dialog";
 import { ProspectFilters } from "./prospect-filters";
+import { ProspectSummaryStrip } from "./prospect-summary";
 import { ProspectTable } from "./prospect-table";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
@@ -46,6 +47,14 @@ export default async function ProspectsPage({
     : undefined;
 
   const aucunProjet = projets.data.length === 0;
+
+  // Les filtres courants, pour que les tuiles cliquables du résumé restreignent
+  // la sélection au lieu de la remplacer.
+  const filtresActifs = new URLSearchParams(
+    Object.entries(filtres).flatMap(([cle, valeur]) =>
+      typeof valeur === "string" && valeur !== "" ? [[cle, valeur]] : [],
+    ),
+  );
 
   return (
     <div className="space-y-6">
@@ -92,6 +101,14 @@ export default async function ProspectsPage({
         />
       ) : (
         <>
+          {/* Les chiffres avant la liste : ils disent où porter l'attention,
+              la liste dit sur qui. L'ordre inverse obligerait à parcourir le
+              tableau pour découvrir qu'il y a des relances en retard. */}
+          <ProspectSummaryStrip
+            resume={prospects.summary}
+            filtres={filtresActifs}
+          />
+
           <ProspectFilters
             projets={projets.data}
             utilisateurs={utilisateurs.data}

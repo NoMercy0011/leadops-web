@@ -2,7 +2,7 @@ import "server-only";
 
 import { apiFetch } from "@/lib/api";
 import type { Paginated } from "@/lib/admin";
-import type { Prospect, ProspectActivity } from "@/lib/types";
+import type { Prospect, ProspectActivity, ProspectSummary } from "@/lib/types";
 
 /**
  * Accès aux prospects.
@@ -33,10 +33,13 @@ function toQuery(filters: ProspectFilters): string {
   return query.size > 0 ? `?${query.toString()}` : "";
 }
 
+/** La liste transporte son résumé agrégé, calculé par l'API sur le même filtre. */
+export type ProspectList = Paginated<Prospect> & { summary: ProspectSummary };
+
 export async function listProspects(
   filters: ProspectFilters = {},
-): Promise<Paginated<Prospect>> {
-  return apiFetch<Paginated<Prospect>>(`/prospects${toQuery(filters)}`, {
+): Promise<ProspectList> {
+  return apiFetch<ProspectList>(`/prospects${toQuery(filters)}`, {
     unwrap: false,
   });
 }

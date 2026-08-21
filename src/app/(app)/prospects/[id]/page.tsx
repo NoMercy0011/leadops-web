@@ -4,6 +4,10 @@ import { Mail, MapPin, Phone } from "lucide-react";
 
 import { ActivityTimeline } from "./activity-timeline";
 import {
+  DeleteProspectButton,
+  EditProspectDialog,
+} from "./edit-prospect-dialog";
+import {
   AssignSelector,
   NextActionForm,
   NoteForm,
@@ -94,15 +98,26 @@ export default async function FicheProspectPage({
           </>
         }
         actions={
-          prospect.converted_at ? (
-            <StatusBadge tone="success">
-              Converti {formatDistance(prospect.converted_at)}
-            </StatusBadge>
-          ) : prospect.lost_at ? (
-            <StatusBadge tone="danger">
-              Perdu {formatDistance(prospect.lost_at)}
-            </StatusBadge>
-          ) : null
+          <>
+            {prospect.converted_at ? (
+              <StatusBadge tone="success">
+                Converti {formatDistance(prospect.converted_at)}
+              </StatusBadge>
+            ) : prospect.lost_at ? (
+              <StatusBadge tone="danger">
+                Perdu {formatDistance(prospect.lost_at)}
+              </StatusBadge>
+            ) : null}
+
+            <EditProspectDialog prospect={prospect} />
+
+            {/* La policy réserve la suppression à l'Admin Client. Le bouton
+                n'est masqué que par confort de lecture : c'est l'API qui
+                tranche, et elle refuserait l'appel de toute façon. */}
+            {user.role === "admin_client" ? (
+              <DeleteProspectButton prospect={prospect} />
+            ) : null}
+          </>
         }
       />
 

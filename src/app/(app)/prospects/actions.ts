@@ -109,6 +109,96 @@ export async function createProspect(
   return { success: `${parsed.data.first_name} a été ajouté au projet.` };
 }
 
+/**
+ * Modification de l'identité et des coordonnées.
+ *
+ * Le projet et l'étape n'y figurent pas : déplacer un prospect d'un projet à
+ * l'autre changerait son pipeline et son questionnaire, donc invaliderait ses
+ * réponses de qualification — ce n'est pas une modification de fiche mais une
+ * opération de reprise de données, que l'API n'expose d'ailleurs pas. L'étape
+ * a son propre point d'entrée, qui écrit au journal.
+ *
+ * Corriger un numéro déclenche côté API le recalcul des colonnes normalisées :
+ * sans lui, la détection de doublons continuerait de travailler sur l'ancienne
+ * valeur.
+ */
+export async function updateProspect(
+  prospectId: number,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const brut = Object.fromEntries(formData);
+
+  const parsed = prospectSchema
+    // Le projet ne se modifie pas : on retire la clé du schéma de création
+    // plutôt que d'en écrire un second, qui divergerait à la première
+    // évolution des règles.
+    .omit({ project_id: true })
+    .safeParse({
+      ...brut,
+      email: brut.email === "" ? undefined : brut.email,
+    });
+
+  if (!parsed.success) {
+    const flat = z.flattenError(parsed.error);
+
+    return {
+      fieldErrors: Object.fromEntries(
+        Object.entries(flat.fieldErrors).map(([champ, messages]) => [
+          champ,
+          messages?.[0] ?? "",
+        ]),
+      ),
+    };
+  }
+
+  try {
+    await apiFetch(`/prospects/${prospectId}`, {
+      method: "PATCH",
+      // Les champs laissés vides sont envoyés à `null` et non omis : sans
+      // cela, vider une adresse email dans le formulaire ne l'effacerait
+      // jamais côté API, la règle `sometimes` ignorant les clés absentes.
+      body: {
+        ...parsed.data,
+        last_name: parsed.data.last_name || null,
+        company_name: parsed.data.company_name || null,
+        phone: parsed.data.phone || null,
+        email: parsed.data.email ?? null,
+        address: parsed.data.address || null,
+        source: parsed.data.source || null,
+      },
+    });
+  } catch (error) {
+    return toState(error);
+  }
+
+  revaliderProspects();
+
+  return { success: "Fiche mise à jour." };
+}
+
+/**
+ * Suppression définitive.
+ *
+ * Réservée à l'Admin Client par la policy — un commercial qui pourrait
+ * supprimer effacerait au passage l'historique d'activités qui alimente les
+ * KPIs de durée de cycle, et ces données ne se reconstituent pas.
+ *
+ * Le front redirige lui-même : la fiche vient de disparaître, la laisser
+ * affichée renverrait un 404 au premier rafraîchissement.
+ */
+export async function deleteProspect(prospectId: number): Promise<ActionState> {
+  try {
+    await apiFetch(`/prospects/${prospectId}`, { method: "DELETE" });
+  } catch (error) {
+    return toState(error);
+  }
+
+  revaliderProspects();
+
+  return { success: "Prospect supprimé." };
+}
+
 export async function changeStage(
   prospectId: number,
   stageId: number,
