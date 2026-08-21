@@ -91,44 +91,68 @@ export default async function RapportsPage({
         to={rapport.period.to.slice(0, 10)}
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <StatTile label="Prospects" valeur={rapport.totals.prospects} icon={Users} />
+      {/* Sept tuiles de même poids mêlaient les comptes et les taux, sans
+          qu'aucune hiérarchie ne distingue le résultat de ses composantes. Un
+          rapport se lit dans l'autre sens : on regarde d'abord ce qu'il donne,
+          ensuite comment on y est arrivé. */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile
+          className="lg:col-span-2"
+          taille="lg"
+          label="Taux de conversion"
+          valeur={rapport.rates.conversion}
+          suffixe="%"
+          detail={`${rapport.totals.converted} converti${rapport.totals.converted > 1 ? "s" : ""} sur ${rapport.totals.prospects} prospect${rapport.totals.prospects > 1 ? "s" : ""} créé${rapport.totals.prospects > 1 ? "s" : ""} dans la période.`}
+          icon={TrendingUp}
+          accent="success"
+        />
+
+        {/* Le taux de qualification explique le précédent : un mauvais taux de
+            conversion sur des prospects mal qualifiés ne se corrige pas au
+            même endroit qu'un mauvais taux sur des prospects bien qualifiés. */}
+        <StatTile
+          label="Taux de qualification"
+          valeur={rapport.rates.qualification}
+          suffixe="%"
+          detail={`${rapport.totals.qualified} qualifié${rapport.totals.qualified > 1 ? "s" : ""}`}
+          icon={TrendingUp}
+        />
+
+        <StatTile
+          label="Taux de perte"
+          valeur={rapport.rates.loss}
+          suffixe="%"
+          detail={`${rapport.totals.lost} perdu${rapport.totals.lost > 1 ? "s" : ""}`}
+        />
+      </div>
+
+      {/* Le volume brut de la période : ce sont les dénominateurs des taux
+          ci-dessus, pas des résultats en eux-mêmes. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatTile
+          taille="sm"
+          label="Prospects créés"
+          valeur={rapport.totals.prospects}
+          icon={Users}
+        />
+        <StatTile
+          taille="sm"
           label="Contactés"
           valeur={rapport.totals.contacted}
           detail="Au moins une interaction"
           icon={UserCheck}
         />
         <StatTile
-          label="Rendez-vous"
-          valeur={rapport.totals.appointments}
-          icon={CalendarDays}
-        />
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile
+          taille="sm"
           label="Qualifiés"
           valeur={rapport.totals.qualified}
           detail="Jalon acquis, même si perdu ensuite"
         />
         <StatTile
-          label="Taux de qualification"
-          valeur={rapport.rates.qualification}
-          suffixe="%"
-          icon={TrendingUp}
-        />
-        <StatTile
-          label="Convertis"
-          valeur={rapport.totals.converted}
-          accent="success"
-        />
-        <StatTile
-          label="Taux de conversion"
-          valeur={rapport.rates.conversion}
-          suffixe="%"
-          icon={TrendingUp}
-          accent="success"
+          taille="sm"
+          label="Rendez-vous"
+          valeur={rapport.totals.appointments}
+          icon={CalendarDays}
         />
       </div>
 

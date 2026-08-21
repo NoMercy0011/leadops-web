@@ -33,6 +33,12 @@ export default async function TableauDeBordPage() {
   const user = await requireUser();
   const tableau = await getDashboard();
 
+  // Les rapports relèvent de l'encadrement : la page renvoie « introuvable »
+  // à un commercial. Lui proposer le bouton conduisait donc à une impasse —
+  // la navigation latérale masque déjà l'entrée, le tableau de bord ne le
+  // faisait pas.
+  const encadrement = user.role === "admin_client" || user.role === "manager";
+
   const enCours =
     tableau.prospects.total - tableau.prospects.converted - tableau.prospects.lost;
 
@@ -47,61 +53,85 @@ export default async function TableauDeBordPage() {
           </>
         }
         actions={
-          <Button asChild variant="outline">
-            <Link href="/rapports">Rapports détaillés</Link>
-          </Button>
+          encadrement ? (
+            <Button asChild variant="outline">
+              <Link href="/rapports">Rapports détaillés</Link>
+            </Button>
+          ) : undefined
         }
       />
 
       {/* Les indicateurs du §2 sont des nombres, pas des courbes : une tuile
-          les donne exactement, là où un graphique les approximerait. */}
+          les donne exactement, là où un graphique les approximerait.
+
+          Ils étaient rendus sur deux rangées de tuiles identiques — sept
+          nombres de même poids, qu'il fallait lire un à un pour trouver celui
+          qu'on venait chercher. Ils sont maintenant répartis sur trois
+          paliers, du plus décisif au simple contexte. */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {/* La dominante, et une seule. C'est la question qu'on se pose en
+            ouvrant cet écran : est-ce que ça convertit ? Tout le reste sert à
+            l'expliquer. `null` s'affiche « — » : sans prospect, il n'y a pas
+            0 % de conversion, il n'y a rien à mesurer. */}
         <StatTile
-          label="Projets actifs"
-          valeur={tableau.active_projects}
-          icon={FolderKanban}
-        />
-        <StatTile
-          label="Prospects"
-          valeur={tableau.prospects.total}
-          detail={`${enCours} en cours`}
-          icon={Users}
-        />
-        <StatTile
+          className="lg:col-span-2"
+          taille="lg"
           label="Taux de conversion"
           valeur={tableau.conversion_rate}
           suffixe="%"
-          detail={`${tableau.prospects.converted} converti${tableau.prospects.converted > 1 ? "s" : ""}`}
+          detail={`${tableau.prospects.converted} converti${tableau.prospects.converted > 1 ? "s" : ""} sur ${tableau.prospects.total} prospect${tableau.prospects.total > 1 ? "s" : ""} depuis l'origine.`}
           icon={TrendingUp}
           accent="success"
         />
+
+        {/* Le stock de travail. Il était relégué en ligne de détail sous le
+            total, alors que c'est lui qu'on travaille : les convertis et les
+            perdus sont sortis du pipeline. */}
         <StatTile
-          label="Perdus"
-          valeur={tableau.prospects.lost}
+          label="Prospects en cours"
+          valeur={enCours}
+          detail={`${tableau.prospects.total} au total`}
+          icon={Users}
+        />
+
+        <StatTile
+          label="À clôturer"
+          valeur={tableau.appointments.overdue}
+          detail="Rendez-vous passés, encore planifiés"
           icon={TriangleAlert}
+          // Le seul indicateur qui appelle une action immédiate : c'est ce qui
+          // justifie de le mettre en évidence, et rien d'autre sur cet écran.
+          accent="warning"
         />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      {/* Le contexte. Exact et utile, mais ce n'est pas ce qu'on vient
+          chercher : d'où le palier le plus discret. */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         <StatTile
+          taille="sm"
           label="Rendez-vous du jour"
           valeur={tableau.appointments.today}
           detail={`Fuseau ${tableau.timezone}`}
           icon={CalendarCheck}
         />
         <StatTile
-          label="À venir"
+          taille="sm"
+          label="Rendez-vous à venir"
           valeur={tableau.appointments.upcoming}
           icon={CalendarClock}
         />
         <StatTile
-          label="À clôturer"
-          valeur={tableau.appointments.overdue}
-          detail="Passés et encore planifiés"
+          taille="sm"
+          label="Projets actifs"
+          valeur={tableau.active_projects}
+          icon={FolderKanban}
+        />
+        <StatTile
+          taille="sm"
+          label="Prospects perdus"
+          valeur={tableau.prospects.lost}
           icon={TriangleAlert}
-          // Le seul indicateur qui appelle une action immédiate : c'est ce qui
-          // justifie de le mettre en évidence, et rien d'autre sur cet écran.
-          accent="warning"
         />
       </div>
 
