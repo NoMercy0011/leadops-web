@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation";
 import {
   Archive,
   ArchiveRestore,
+  Eraser,
   LoaderCircle,
   Pencil,
-  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -253,7 +253,9 @@ export function ArchiveProspectButton({ prospect }: { prospect: Prospect }) {
 
       <AlertDialogContent className="shadow-dialog">
         <AlertDialogHeader>
-          <AlertDialogTitle>Archiver « {prospect.full_name} » ?</AlertDialogTitle>
+          <AlertDialogTitle>
+            Archiver « {prospect.full_name} » ?
+          </AlertDialogTitle>
           <AlertDialogDescription>
             Le prospect quitte les listes et sort de tous les taux — conversion,
             qualification, perte. Rien n&apos;est supprimé : sa fiche et son
@@ -264,7 +266,10 @@ export function ArchiveProspectButton({ prospect }: { prospect: Prospect }) {
 
         <div className="space-y-2 py-1">
           <label htmlFor="motif-archivage" className="text-sm font-medium">
-            Motif <span className="text-muted-foreground font-normal">facultatif</span>
+            Motif{" "}
+            <span className="text-muted-foreground font-normal">
+              facultatif
+            </span>
           </label>
           <Textarea
             id="motif-archivage"
@@ -299,11 +304,17 @@ export function ArchiveProspectButton({ prospect }: { prospect: Prospect }) {
 }
 
 /**
- * Suppression définitive, réservée à l'Admin Client par la policy.
+ * Effacement définitif, réservé à l'Admin Client par la policy.
  *
- * Supprimer un prospect emporte son journal d'activités, dont dépendent les
- * KPIs de durée de cycle — et ces données ne se reconstituent pas. D'où la
- * confirmation, et un libellé qui nomme la conséquence plutôt que l'action.
+ * **Ce n'est pas la façon de retirer un prospect du pipeline** — c'est
+ * l'archivage qui s'en charge, sans rien détruire. Cette action existe pour
+ * une seule raison : un prospect est une personne physique, et le droit à
+ * l'effacement (RGPD, art. 17) peut obliger à supprimer réellement ses
+ * données. L'archivage n'y répond pas, puisqu'il les conserve.
+ *
+ * D'où le libellé, qui nomme cette fonction-là plutôt que le geste : «
+ * Supprimer » se lisait comme une variante plus expéditive d'« Archiver », et
+ * invitait à l'erreur que l'archivage a précisément été introduit pour éviter.
  */
 export function DeleteProspectButton({ prospect }: { prospect: Prospect }) {
   const router = useRouter();
@@ -333,23 +344,34 @@ export function DeleteProspectButton({ prospect }: { prospect: Prospect }) {
           size="sm"
           className="text-muted-foreground hover:text-destructive duration-(--duration-fast) ease-brand transition-colors"
         >
-          <Trash2 className="size-4" aria-hidden />
-          Supprimer
+          <Eraser className="size-4" aria-hidden />
+          Effacer les données personnelles
         </Button>
       </AlertDialogTrigger>
 
       <AlertDialogContent className="shadow-dialog">
         <AlertDialogHeader>
           <AlertDialogTitle>
-            Supprimer « {prospect.full_name} » ?
+            Effacer les données de « {prospect.full_name} » ?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            La fiche, ses réponses de qualification et tout son historique
-            d&apos;interactions seront effacés. Les statistiques passées qui en
-            découlent ne pourront pas être reconstituées. Cette action est
-            irréversible.
+            À n&apos;utiliser que pour répondre à une demande d&apos;effacement.
+            Pour retirer ce prospect du pipeline, archivez-le : rien n&apos;est
+            détruit et l&apos;opération se défait.
           </AlertDialogDescription>
         </AlertDialogHeader>
+
+        {/* Aplat discret et jeton de texte assortis : `--destructive-subtle`
+            va avec `--destructive-subtle-foreground`, jamais avec le jeton de
+            l'aplat plein, invisible dessus en thème sombre. */}
+        <div className="border-destructive/30 bg-destructive-subtle text-destructive-subtle-foreground space-y-1 rounded-md border px-3 py-2 text-sm">
+          <p className="font-medium">Ce qui disparaît définitivement</p>
+          <p className="leading-relaxed">
+            La fiche, ses réponses de qualification, ses rendez-vous et tout son
+            historique d&apos;interactions. Les durées de cycle et les taux déjà
+            calculés sur ce dossier ne pourront pas être reconstitués.
+          </p>
+        </div>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>Annuler</AlertDialogCancel>
           <AlertDialogAction
@@ -364,7 +386,7 @@ export function DeleteProspectButton({ prospect }: { prospect: Prospect }) {
             {pending ? (
               <LoaderCircle className="size-4 animate-spin" aria-hidden />
             ) : null}
-            Supprimer définitivement
+            Effacer définitivement
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
