@@ -123,6 +123,8 @@ export default async function ProspectsPage({
             projets={projets.data}
             utilisateurs={utilisateurs.data}
             etapes={projetActif?.stages ?? []}
+            facettes={prospects.facets}
+            parametres={filtresActifs}
           />
 
           {prospects.data.length === 0 ? (

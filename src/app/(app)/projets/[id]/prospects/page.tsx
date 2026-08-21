@@ -80,6 +80,8 @@ export default async function ProspectsDuProjetPage({
         projets={[]}
         utilisateurs={utilisateurs.data}
         etapes={projet.stages ?? []}
+        facettes={prospects.facets}
+        parametres={filtresActifs}
         base={base}
       />
 
