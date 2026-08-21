@@ -73,9 +73,11 @@ export function OngletsProjet({
   );
 
   return (
-    <nav aria-label="Sections du projet" className="border-b">
-      {/* `-mb-px` fait mordre le soulignement de l'onglet actif sur la bordure
-          du conteneur, au lieu de flotter un pixel au-dessus. */}
+    // Le filet appartient à la bande d'en-tête, pas à la navigation : les deux
+    // partagent la même ligne, et deux bordures superposées s'y verraient.
+    <nav aria-label="Sections du projet" className="min-w-0">
+      {/* `-mb-px` fait mordre le soulignement de l'onglet actif sur le filet de
+          la bande, au lieu de flotter un pixel au-dessus. */}
       <ul className="-mb-px flex gap-1 overflow-x-auto">
         {visibles.map((onglet) => {
           const href = `${base}${onglet.suffixe}`;
