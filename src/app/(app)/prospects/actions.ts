@@ -14,6 +14,16 @@ export interface ActionState {
   fieldErrors?: Record<string, string>;
 }
 
+/**
+ * Un même prospect se lit depuis trois écrans — la liste, sa fiche, le kanban —
+ * qui partagent le layout `/prospects`. Revalider ce layout les couvre tous
+ * d'un coup, là où énumérer les chemins un à un laisse systématiquement le
+ * dernier écran ajouté sur des données périmées.
+ */
+function revaliderProspects(): void {
+  revalidatePath(BASE_PATH, "layout");
+}
+
 function toState(error: unknown): ActionState {
   if (error instanceof ApiError) {
     if (error.errors) {
@@ -25,6 +35,14 @@ function toState(error: unknown): ActionState {
           ]),
         ),
       };
+    }
+
+    // 403 et 404 se confondent volontairement : distinguer « interdit » de
+    // « inexistant » confirmerait l'existence d'un prospect à qui n'y a pas
+    // accès. Le message brut de Laravel est écarté au passage — il cite le nom
+    // de la classe Eloquent, qui n'a rien à faire dans une notification.
+    if ([403, 404].includes(error.status)) {
+      return { message: "Ce prospect n'est plus dans votre périmètre." };
     }
 
     return { message: error.message };
@@ -86,7 +104,7 @@ export async function createProspect(
     return toState(error);
   }
 
-  revalidatePath(BASE_PATH);
+  revaliderProspects();
 
   return { success: `${parsed.data.first_name} a été ajouté au projet.` };
 }
@@ -104,8 +122,7 @@ export async function changeStage(
     return toState(error);
   }
 
-  revalidatePath(BASE_PATH);
-  revalidatePath(`${BASE_PATH}/${prospectId}`);
+  revaliderProspects();
 
   return { success: "Étape mise à jour." };
 }
@@ -123,8 +140,7 @@ export async function assignProspect(
     return toState(error);
   }
 
-  revalidatePath(BASE_PATH);
-  revalidatePath(`${BASE_PATH}/${prospectId}`);
+  revaliderProspects();
 
   return { success: userId === null ? "Prospect désaffecté." : "Prospect affecté." };
 }
@@ -152,7 +168,7 @@ export async function bulkAssign(
     return toState(error);
   }
 
-  revalidatePath(BASE_PATH);
+  revaliderProspects();
 
   if (rapport.skipped > 0) {
     return {
@@ -185,7 +201,7 @@ export async function addNote(
     return toState(error);
   }
 
-  revalidatePath(`${BASE_PATH}/${prospectId}`);
+  revaliderProspects();
 
   return { success: "Note ajoutée." };
 }
@@ -209,7 +225,7 @@ export async function planNextAction(
     return toState(error);
   }
 
-  revalidatePath(`${BASE_PATH}/${prospectId}`);
+  revaliderProspects();
 
   return { success: quand === "" ? "Relance annulée." : "Relance planifiée." };
 }
@@ -245,7 +261,7 @@ export async function importProspects(
     return toState(error);
   }
 
-  revalidatePath(BASE_PATH);
+  revaliderProspects();
 
   return {
     success: `${rapport.imported} prospect${rapport.imported > 1 ? "s" : ""} importé${rapport.imported > 1 ? "s" : ""}.`,
