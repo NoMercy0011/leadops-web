@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Users } from "lucide-react";
+import Link from "next/link";
+import { Columns3, Users } from "lucide-react";
 
 import { CreateProspectDialog } from "./create-prospect-dialog";
 import { ImportDialog } from "./import-dialog";
@@ -58,6 +59,14 @@ export default async function ProspectsPage({
         actions={
           aucunProjet ? undefined : (
             <>
+              <Button asChild variant="outline">
+                <Link
+                  href={`/prospects/kanban${projectId ? `?project_id=${projectId}` : ""}`}
+                >
+                  <Columns3 className="size-4" aria-hidden />
+                  Kanban
+                </Link>
+              </Button>
               {encadrement ? <ImportDialog projets={projets.data} /> : null}
               <Button asChild variant="outline">
                 <a
