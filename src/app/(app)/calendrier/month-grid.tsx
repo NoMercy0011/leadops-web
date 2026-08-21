@@ -91,12 +91,22 @@ export function MonthGrid({
                 <span
                   className={cn(
                     "flex size-6 items-center justify-center rounded-full text-xs tabular-nums",
-                    estAujourdhui && "bg-primary text-primary-foreground font-semibold",
+                    estAujourdhui &&
+                      "bg-primary text-primary-foreground font-semibold",
                     !duMois && "text-muted-foreground/50",
                   )}
                 >
                   {jour.getUTCDate()}
                 </span>
+
+                {/* Le nombre de rendez-vous du jour, lisible sans compter les
+                    lignes — utile dès qu'une case en porte plus de trois et
+                    que les suivantes sont repliées. */}
+                {evenements.length > 1 ? (
+                  <span className="text-muted-foreground text-[0.6875rem] tabular-nums">
+                    {evenements.length}
+                  </span>
+                ) : null}
               </div>
 
               <ul className="space-y-1">
@@ -105,8 +115,14 @@ export function MonthGrid({
                     <Link
                       href={`/prospects/${rdv.prospect_id}`}
                       className={cn(
-                        "hover:bg-accent flex items-center gap-1 rounded px-1 py-0.5 text-xs transition-colors",
-                        rdv.is_overdue && "text-warning-subtle-foreground",
+                        "hover:bg-accent duration-(--duration-fast) ease-brand flex items-center gap-1 rounded px-1 py-0.5 text-xs transition-colors",
+                        rdv.is_overdue &&
+                          "bg-warning-subtle text-warning-subtle-foreground font-medium",
+                        // Un rendez-vous clos ne réclame plus rien : il
+                        // s'efface au profit de ceux qui restent à traiter.
+                        (rdv.status === "cancelled" ||
+                          rdv.status === "completed") &&
+                          "text-muted-foreground",
                       )}
                       title={`${formatHeure(rdv.scheduled_at, { timeZone: fuseau })} — ${rdv.prospect?.full_name ?? ""} (${rdv.status_label})`}
                     >
@@ -183,8 +199,22 @@ export function AgendaList({
 
           <ul className="divide-border border-border divide-y rounded-xl border">
             {evenements.map((rdv) => (
-              <li key={rdv.id} className="flex items-center gap-3 px-4 py-3">
-                <span className="w-12 shrink-0 text-sm tabular-nums">
+              <li
+                key={rdv.id}
+                className={cn(
+                  // Filet coloré en bord de ligne : sur une liste dense, il
+                  // fait ressortir ce qui appelle une action sans ajouter ni
+                  // badge ni icône supplémentaire.
+                  "flex items-center gap-3 border-l-2 px-4 py-3",
+                  rdv.is_overdue
+                    ? "border-l-warning-subtle-foreground bg-warning-subtle/30"
+                    : "border-l-transparent",
+                )}
+              >
+                {/* L'heure est l'axe de balayage d'un agenda : on parcourt une
+                    journée par ses horaires, pas par ses noms. Elle passe donc
+                    au-dessus du nom du prospect, qui était son égal. */}
+                <span className="font-heading w-14 shrink-0 text-base font-semibold tabular-nums">
                   {formatHeure(rdv.scheduled_at, { timeZone: fuseau })}
                 </span>
 
@@ -202,7 +232,7 @@ export function AgendaList({
                     {rdv.prospect?.full_name ?? "—"}
                   </Link>
                   <p className="text-muted-foreground truncate text-xs">
-                    {rdv.project?.name}
+                    {rdv.duration_minutes} min · {rdv.project?.name}
                     {rdv.user ? ` · ${rdv.user.name}` : " · non affecté"}
                     {rdv.location ? ` · ${rdv.location}` : ""}
                   </p>
