@@ -67,7 +67,21 @@ export function StatusBadge({
     pulse?: boolean;
   }) {
   return (
-    <span className={cn(statusBadgeVariants({ tone }), className)} {...props}>
+    <span
+      className={cn(
+        statusBadgeVariants({ tone }),
+        // Un filet dans la teinte du texte, à un quart d'opacité.
+        //
+        // L'aplat de la pastille est volontairement très pâle — #e9f2e9 pour
+        // la sauge — et il ne se détache pas de la carte blanche : 1,1:1, soit
+        // aucune forme perceptible. Le libellé se lisait, la pastille non. Le
+        // filet lui rend un contour sans toucher à la palette, qui sert
+        // partout ailleurs.
+        pulse && "ring-1 ring-current/25",
+        className,
+      )}
+      {...props}
+    >
       {point ? (
         // La couleur seule ne peut pas porter l'information — daltonisme, et
         // impression en noir et blanc. Le libellé reste donc toujours présent,
