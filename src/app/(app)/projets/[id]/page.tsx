@@ -1,20 +1,16 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import {
+  CircleCheck,
+  CircleSlash,
+  PhoneCall,
+  TrendingUp,
+  TriangleAlert,
+  Users,
+} from "lucide-react";
 
-import { PipelineEditor } from "./pipeline-editor";
-import { ImportDialog } from "@/app/(app)/prospects/import-dialog";
 import { DataQualityPanel } from "./data-quality";
 import { PipelineHealthPanel } from "./pipeline-health";
-import { ProjectJournal } from "./project-journal";
 import { VariantComparisonPanel } from "./variant-comparison";
-import { EditProjectDialog, ProjectStatusActions } from "./project-actions";
-import { QuestionnaireBuilder } from "./questionnaire-builder";
-import { TeamEditor } from "./team-editor";
-import { LibelleFilAriane } from "@/components/fil-ariane";
-import { LienRetour } from "@/components/lien-retour";
-import { Notice } from "@/components/notice";
-import { PageHeader } from "@/components/page-header";
-import { StatusBadge, type Tone } from "@/components/status-badge";
+import { StatTile } from "@/components/stat-tile";
 import {
   Card,
   CardContent,
@@ -22,158 +18,156 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ApiError } from "@/lib/api";
 import { requireUser } from "@/lib/dal";
-import { formatDate } from "@/lib/format";
 import {
   getDataQuality,
   getPipelineHealth,
   getProject,
   getVariantComparison,
-  listCompanyUsers,
-  listProjectActivities,
-  listVariants,
 } from "@/lib/projects";
-import { listQuestions } from "@/lib/questionnaire";
-import type { ProjectStatus } from "@/lib/types";
+import { listProspects } from "@/lib/prospects";
+import { getReport } from "@/lib/reporting";
 
-export const metadata: Metadata = {
-  title: "Projet",
-};
-
-const TONS: Record<ProjectStatus, Tone> = {
-  active: "success",
-  suspended: "warning",
-  completed: "neutral",
-  archived: "neutral",
-};
-
-export default async function FicheProjetPage({
+/**
+ * Tableau de bord du projet.
+ *
+ * La période demandée court depuis la création du projet, et non sur les
+ * trente derniers jours comme le fait l'API par défaut : la question qu'on se
+ * pose en ouvrant un projet est « où en est-il », pas « qu'a-t-il produit ce
+ * mois-ci ». Un projet lancé il y a six semaines afficherait sinon un taux
+ * calculé sur une fraction de son histoire, sans que rien ne le signale — et
+ * c'est aussi pourquoi le libellé nomme la période qu'il couvre réellement.
+ */
+export default async function TableauDeBordProjetPage({
   params,
 }: PageProps<"/projets/[id]">) {
   const user = await requireUser();
   const { id } = await params;
   const projectId = Number(id);
 
-  if (!Number.isInteger(projectId)) {
-    notFound();
-  }
-
-  const editable = user.role === "admin_client";
-
-  let projet;
-
-  try {
-    projet = await getProject(projectId);
-  } catch (error) {
-    // 403 et 404 mènent au même écran : les distinguer confirmerait
-    // l'existence d'un projet à qui n'y a pas accès.
-    if (error instanceof ApiError && [403, 404].includes(error.status)) {
-      notFound();
-    }
-    throw error;
-  }
-
-  // Candidats et variantes ne servent qu'à qui peut modifier : les charger
-  // pour un commercial serait deux requêtes pour rien.
-  // La santé du pipeline est réservée à l'encadrement côté API : la demander
-  // pour un commercial produirait un 403 à chaque visite de la fiche.
+  const projet = await getProject(projectId);
   const encadrement = user.role === "admin_client" || user.role === "manager";
 
-  const [candidats, variantes, questions, sante, qualite, journal, comparaison] =
-    await Promise.all([
-      editable
-        ? listCompanyUsers().then((page) => page.data)
-        : Promise.resolve([]),
-      editable ? listVariants() : Promise.resolve([]),
-      listQuestions(projectId),
-      encadrement ? getPipelineHealth(projectId) : Promise.resolve(null),
-      encadrement ? getDataQuality(projectId) : Promise.resolve(null),
-      encadrement ? listProjectActivities(projectId) : Promise.resolve([]),
-      encadrement ? getVariantComparison(projectId) : Promise.resolve(null),
-    ]);
+  // Sans date de création connue, on laisse l'API retenir sa fenêtre par
+  // défaut — trente jours — et le libellé le dit, plutôt que d'annoncer une
+  // période que les chiffres ne couvrent pas.
+  const depuis = projet.created_at?.slice(0, 10);
+  const periode = depuis
+    ? "depuis la création du projet"
+    : "sur les trente derniers jours";
+
+  // La santé du pipeline, la comparaison et l'audit sont réservés à
+  // l'encadrement côté API : les demander pour un commercial produirait un 403
+  // à chaque visite.
+  const [rapport, prospects, sante, comparaison, qualite] = await Promise.all([
+    getReport({ project_id: projectId, from: depuis }),
+    // `per_page: 1` : seul le résumé agrégé est utilisé ici, la liste est
+    // l'affaire de l'onglet Prospects.
+    listProspects({ project_id: projectId, per_page: 1 }),
+    encadrement ? getPipelineHealth(projectId) : Promise.resolve(null),
+    encadrement ? getVariantComparison(projectId) : Promise.resolve(null),
+    encadrement ? getDataQuality(projectId) : Promise.resolve(null),
+  ]);
+
+  const totaux = rapport.totals;
+  const resume = prospects.summary;
+
+  const versProspects = `/projets/${projet.id}/prospects`;
 
   return (
     <div className="space-y-6">
-      {/* Donne son nom réel au segment d'identifiant du fil d'Ariane :
-          « #12 » n'apprend rien à personne. */}
-      <LibelleFilAriane segment={String(projet.id)} nom={projet.name} />
+      {/* Une seule dominante : le taux de conversion répond à la question
+          qu'on se pose en ouvrant un projet. Tout le reste l'explique. */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile
+          className="lg:col-span-2"
+          taille="lg"
+          label="Taux de conversion"
+          valeur={rapport.rates.conversion}
+          suffixe="%"
+          detail={`${totaux.converted} converti${totaux.converted > 1 ? "s" : ""} sur ${totaux.prospects} prospect${totaux.prospects > 1 ? "s" : ""} ${periode}.`}
+          icon={TrendingUp}
+          accent="success"
+        />
 
-      <LienRetour href="/projets" label="Tous les projets" />
+        <StatTile
+          label="Prospects"
+          valeur={resume.total}
+          detail={
+            resume.non_affectes > 0
+              ? `${resume.non_affectes} sans commercial`
+              : "Tous affectés"
+          }
+          icon={Users}
+          href={versProspects}
+        />
 
-      <PageHeader
-        titre={projet.name}
-        description={
-          <>
-            {projet.product ?? "Produit non renseigné"}
-            {projet.target ? ` · Cible : ${projet.target}` : null}
-            {projet.variant ? ` · Variante : ${projet.variant.name}` : null}
-          </>
-        }
-        actions={
-          <>
-            <StatusBadge tone={TONS[projet.status]}>
-              {projet.status_label}
-            </StatusBadge>
+        <StatTile
+          label="Relances en retard"
+          valeur={resume.en_retard}
+          detail="Prochaine action datée, non traitée"
+          icon={TriangleAlert}
+          // Le seul indicateur de cet écran qui appelle une action
+          // aujourd'hui : c'est ce qui justifie de le mettre en évidence, et
+          // rien d'autre. Une page où tout est accentué n'accentue rien.
+          accent={resume.en_retard > 0 ? "warning" : undefined}
+          href={versProspects}
+        />
+      </div>
 
-            {/* L'import n'est proposé que si le projet accepte des prospects :
-                l'API le refuse désormais sur un projet suspendu, terminé ou
-                archivé, et offrir le bouton mènerait à un échec annoncé. */}
-            {encadrement && projet.accepts_new_prospects ? (
-              <ImportDialog projet={projet} taille="sm" />
-            ) : null}
+      {/* Le second rang est du contexte : exact, utile, mais ce n'est pas ce
+          qu'on vient chercher. */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile
+          taille="sm"
+          label="Taux de qualification"
+          valeur={rapport.rates.qualification}
+          suffixe="%"
+          detail={`${totaux.qualified} qualifié${totaux.qualified > 1 ? "s" : ""}`}
+          icon={CircleCheck}
+        />
+        <StatTile
+          taille="sm"
+          label="Contactés"
+          valeur={totaux.contacted}
+          detail="Au moins une interaction"
+          icon={PhoneCall}
+        />
+        <StatTile
+          taille="sm"
+          label="Perdus"
+          valeur={totaux.lost}
+          suffixe={rapport.rates.loss !== null ? `· ${rapport.rates.loss} %` : undefined}
+          detail="Affaires closes sans suite"
+          icon={CircleSlash}
+        />
+        <StatTile
+          taille="sm"
+          label="Rendez-vous"
+          valeur={totaux.appointments}
+          detail={periode.replace(/^./, (c) => c.toUpperCase())}
+          href={`/projets/${projet.id}/rendez-vous`}
+        />
+      </div>
 
-            {/* Modifier et changer d'état sont réservés à l'Admin Client par
-                la policy. Le front masque, l'API tranche. */}
-            {editable ? (
-              <>
-                <EditProjectDialog projet={projet} variantes={variantes} />
-                <ProjectStatusActions projet={projet} />
-              </>
-            ) : null}
-          </>
-        }
-      />
-
-      {projet.status === "archived" ? (
-        <Notice variant="info" titre="Projet archivé">
-          Il ne figure plus dans la liste des projets et n&apos;accepte plus de
-          nouveaux prospects. Ses données restent intactes — rien n&apos;a été
-          supprimé, et l&apos;archivage se défait.
-        </Notice>
-      ) : !projet.accepts_new_prospects ? (
-        <Notice variant="warning" titre="Projet fermé aux nouveaux prospects">
-          Les données existantes restent consultables et exportables.
-        </Notice>
-      ) : null}
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      {sante ? (
+        <Card>
           <CardHeader>
-            <CardTitle>Pipeline</CardTitle>
+            <CardTitle>Santé du pipeline</CardTitle>
             <CardDescription>
-              Les étapes sont propres à ce projet. Modifier ce pipeline
-              n&apos;affecte aucun autre.
+              La répartition dit où sont les prospects ; la durée dit où ils
+              s&apos;arrêtent. Deux étapes peuvent porter le même nombre de
+              dossiers sans appeler la même action.
             </CardDescription>
           </CardHeader>
-          {/* Les chiffres avant l'éditeur : on regarde d'abord où ça bloque,
-              on ne remanie les étapes qu'ensuite. */}
-          {sante ? (
-            <CardContent className="border-b pb-6">
-              <PipelineHealthPanel sante={sante} />
-            </CardContent>
-          ) : null}
-
-          <CardContent className={sante ? "pt-6" : undefined}>
-            <PipelineEditor
-              projectId={projet.id}
-              stages={projet.stages ?? []}
-              editable={editable}
-            />
+          <CardContent>
+            <PipelineHealthPanel sante={sante} />
           </CardContent>
         </Card>
+      ) : null}
 
-        <div className="space-y-6">
+      {comparaison || qualite ? (
+        <div className="grid gap-6 lg:grid-cols-2">
           {comparaison ? (
             <Card>
               <CardHeader>
@@ -189,8 +183,6 @@ export default async function FicheProjetPage({
             </Card>
           ) : null}
 
-          {/* La qualité des données ouvre le rail : c'est un constat sur le
-              fichier, à lire avant d'en travailler le détail. */}
           {qualite ? (
             <Card>
               <CardHeader>
@@ -205,99 +197,8 @@ export default async function FicheProjetPage({
               </CardContent>
             </Card>
           ) : null}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Questionnaire</CardTitle>
-              <CardDescription>
-                Questions de qualification posées sur chaque prospect de ce
-                projet. Elles se configurent ici, sans déploiement.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <QuestionnaireBuilder
-                projectId={projet.id}
-                questions={questions}
-                editable={editable}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Équipe</CardTitle>
-              <CardDescription>
-                Les commerciaux affectés voient ce projet et ses prospects.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {editable ? (
-                <TeamEditor
-                  projectId={projet.id}
-                  candidats={candidats}
-                  membresInitiaux={(projet.members ?? []).map((m) => m.id)}
-                  editable
-                />
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {(projet.members ?? []).map((membre) => (
-                    <li key={membre.id} className="flex justify-between gap-2">
-                      <span className="truncate">{membre.name}</span>
-                      <span className="text-muted-foreground shrink-0 text-xs">
-                        {membre.role_label}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-
-          {encadrement ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Journal du projet</CardTitle>
-                <CardDescription>
-                  Modifications du pipeline, du questionnaire et de
-                  l&apos;équipe. Les lignes signalées changent le sens des
-                  données déjà saisies.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ProjectJournal
-                  activites={journal}
-                  fuseau={user.company?.timezone}
-                />
-              </CardContent>
-            </Card>
-          ) : null}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Informations</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Créé le</span>
-                <span>
-                  {formatDate(projet.created_at, {
-                    timeZone: user.company?.timezone,
-                  })}
-                </span>
-              </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Étapes</span>
-                <span>{projet.stages?.length ?? 0}</span>
-              </div>
-              {projet.description ? (
-                <p className="text-muted-foreground border-t pt-3 leading-relaxed">
-                  {projet.description}
-                </p>
-              ) : null}
-            </CardContent>
-          </Card>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

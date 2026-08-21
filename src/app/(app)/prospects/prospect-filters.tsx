@@ -21,10 +21,16 @@ export function ProspectFilters({
   projets,
   utilisateurs,
   etapes,
+  base = "/prospects",
 }: {
+  /**
+   * Vide dans l'onglet Prospects d'un projet : le projet y est fixé par
+   * l'URL, et proposer d'en changer ferait quitter la fiche sans le dire.
+   */
   projets: Project[];
   utilisateurs: User[];
   etapes: PipelineStage[];
+  base?: string;
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -47,13 +53,16 @@ export function ProspectFilters({
     }
 
     startTransition(() => {
-      router.replace(suivants.size > 0 ? `/prospects?${suivants}` : "/prospects");
+      router.replace(suivants.size > 0 ? `${base}?${suivants}` : base);
     });
   }
 
-  const actifs = ["project_id", "stage_id", "assigned_user_id", "search"].filter(
-    (cle) => params.get(cle),
-  );
+  const actifs = [
+    "project_id",
+    "stage_id",
+    "assigned_user_id",
+    "search",
+  ].filter((cle) => params.get(cle));
 
   return (
     <div
@@ -79,19 +88,21 @@ export function ProspectFilters({
         />
       </form>
 
-      <NativeSelect
-        aria-label="Filtrer par projet"
-        className="w-auto min-w-40"
-        value={params.get("project_id") ?? ""}
-        onChange={(e) => appliquer("project_id", e.target.value)}
-      >
-        <option value="">Tous les projets</option>
-        {projets.map((projet) => (
-          <option key={projet.id} value={projet.id}>
-            {projet.name}
-          </option>
-        ))}
-      </NativeSelect>
+      {projets.length > 0 ? (
+        <NativeSelect
+          aria-label="Filtrer par projet"
+          className="w-auto min-w-40"
+          value={params.get("project_id") ?? ""}
+          onChange={(e) => appliquer("project_id", e.target.value)}
+        >
+          <option value="">Tous les projets</option>
+          {projets.map((projet) => (
+            <option key={projet.id} value={projet.id}>
+              {projet.name}
+            </option>
+          ))}
+        </NativeSelect>
+      ) : null}
 
       {/* Les étapes ne sont proposées qu'une fois un projet choisi : elles lui
           appartiennent, et une liste mêlant les étapes de tous les projets
@@ -133,7 +144,7 @@ export function ProspectFilters({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => startTransition(() => router.replace("/prospects"))}
+          onClick={() => startTransition(() => router.replace(base))}
         >
           <X className="size-4" aria-hidden />
           Réinitialiser

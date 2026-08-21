@@ -1,9 +1,17 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { apiFetch } from "@/lib/api";
 import type { Paginated } from "@/lib/admin";
 import type { PerformanceRow } from "@/lib/reporting";
-import type { PipelineStage, Project, User, Variant, StageColor } from "@/lib/types";
+import type {
+  PipelineStage,
+  Project,
+  User,
+  Variant,
+  StageColor,
+} from "@/lib/types";
 
 /**
  * Accès aux projets, variantes et pipelines.
@@ -25,9 +33,23 @@ export async function listProjects(
   return apiFetch<Paginated<Project>>(`/projects${suffix}`, { unwrap: false });
 }
 
-export async function getProject(id: number): Promise<Project> {
+/**
+ * Fiche d'un projet, mémoïsée le temps d'un rendu.
+ *
+ * Le layout de `/projets/[id]` en a besoin pour l'en-tête et le fil d'Ariane,
+ * `generateMetadata` pour le titre de l'onglet, et chaque page de section pour
+ * son propre contenu — soit trois appels pour une même donnée à chaque
+ * navigation. La déduplication native de `fetch` ne s'applique pas ici :
+ * `apiFetch` passe `cache: "no-store"`, parce que les données sont cloisonnées
+ * par utilisateur et qu'un cache partagé exposerait une entreprise à une autre.
+ *
+ * `cache()` de React répond exactement à ce besoin : la mémoïsation vit le
+ * temps d'un rendu serveur et meurt avec lui, sans jamais franchir la
+ * frontière entre deux requêtes.
+ */
+export const getProject = cache(async (id: number): Promise<Project> => {
   return apiFetch<Project>(`/projects/${id}`);
-}
+});
 
 export async function listStages(projectId: number): Promise<PipelineStage[]> {
   return apiFetch<PipelineStage[]>(`/projects/${projectId}/stages`);
