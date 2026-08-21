@@ -144,6 +144,22 @@ export interface Prospect {
   updated_at: string | null;
 }
 
+/**
+ * Compteurs joints à la liste des prospects.
+ *
+ * Ils portent sur le filtre entier, pas sur la page reçue : les recalculer
+ * côté front à partir de `data` donnerait un chiffre faux dès la seconde
+ * page, et faux en silence.
+ */
+export interface ProspectSummary {
+  total: number;
+  non_affectes: number;
+  convertis: number;
+  perdus: number;
+  /** Relance planifiée dépassée, hors dossiers convertis ou perdus. */
+  en_retard: number;
+}
+
 export type ActivityType =
   | "created"
   | "stage_changed"

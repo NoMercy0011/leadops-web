@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { LoaderCircle, UserCog } from "lucide-react";
+import { AlarmClock, LoaderCircle, Phone, UserCog } from "lucide-react";
 import { toast } from "sonner";
 
 import { bulkAssign } from "./actions";
@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDateHeure, formatDistance, formatNombre } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { Prospect, User } from "@/lib/types";
 
 /**
@@ -28,7 +29,63 @@ import type { Prospect, User } from "@/lib/types";
  * La réaffectation est une décision d'encadrement (§10.3) : la colonne de
  * sélection n'apparaît pas pour un commercial, qui ne peut de toute façon pas
  * la déclencher côté API.
+ *
+ * **Hiérarchie des colonnes.** Elles sont ordonnées par ce qu'un commercial
+ * cherche dans cet écran : qui, où en est-on, quoi faire ensuite, qui s'en
+ * occupe, quand a-t-on parlé pour la dernière fois. « Prochaine action »
+ * manquait entièrement — c'est pourtant la seule donnée qui dit quoi faire, et
+ * elle était reléguée à la fiche, donc invisible tant qu'on ne l'ouvrait pas.
+ * Une relance dépassée passe en couleur d'alerte : c'est la seule mise en
+ * évidence du tableau, pour qu'elle reste repérable au balayage.
  */
+/**
+ * Cellule « prochaine action ».
+ *
+ * Trois états, et c'est la distinction entre les deux premiers qui compte :
+ * une relance dépassée réclame une action aujourd'hui, une relance à venir
+ * n'est qu'une information. Un dossier converti ou perdu n'appelle plus rien,
+ * même s'il porte encore une date — l'API l'exclut du compte « à relancer »
+ * pour la même raison.
+ */
+function ProchaineAction({
+  prospect,
+  fuseau,
+}: {
+  prospect: Prospect;
+  fuseau?: string;
+}) {
+  const clos = Boolean(prospect.converted_at ?? prospect.lost_at);
+
+  if (!prospect.next_action_at) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+
+  const enRetard = !clos && new Date(prospect.next_action_at) < new Date();
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 whitespace-nowrap",
+        enRetard
+          ? "text-warning-subtle-foreground font-medium"
+          : "text-muted-foreground",
+        clos && "line-through",
+      )}
+    >
+      {enRetard ? <AlarmClock className="size-3.5 shrink-0" aria-hidden /> : null}
+      <time
+        dateTime={prospect.next_action_at}
+        title={
+          (prospect.next_action_note ? `${prospect.next_action_note} — ` : "") +
+          formatDateHeure(prospect.next_action_at, { timeZone: fuseau })
+        }
+      >
+        {formatDistance(prospect.next_action_at)}
+      </time>
+    </span>
+  );
+}
+
 export function ProspectTable({
   prospects,
   utilisateurs,
@@ -134,8 +191,9 @@ export function ProspectTable({
                   ) : null}
                   <TableHead>Prospect</TableHead>
                   <TableHead>Étape</TableHead>
+                  <TableHead>Prochaine action</TableHead>
                   <TableHead>Commercial</TableHead>
-                  <TableHead>Dernière interaction</TableHead>
+                  <TableHead className="text-right">Dernière interaction</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -153,18 +211,41 @@ export function ProspectTable({
 
                     <TableCell>
                       <div className="min-w-0 space-y-0.5">
+                        {/* Le nom est l'entrée de la ligne : il porte le lien
+                            et se lit un cran au-dessus du reste. */}
                         <Link
                           href={`/prospects/${prospect.id}`}
-                          className="block truncate font-medium hover:underline"
+                          className="block truncate text-[0.9375rem] font-medium hover:underline"
                         >
                           {prospect.full_name}
                         </Link>
-                        <p className="text-muted-foreground truncate text-xs">
-                          {prospect.company_name ??
-                            prospect.phone ??
-                            prospect.email ??
-                            "Sans coordonnée"}
-                        </p>
+
+                        <div className="text-muted-foreground flex min-w-0 items-center gap-2 text-xs">
+                          {prospect.company_name ? (
+                            <span className="truncate">
+                              {prospect.company_name}
+                            </span>
+                          ) : null}
+
+                          {/* Le métier est un métier de téléphone : le numéro
+                              est composable d'un clic depuis la liste, sans
+                              passer par la fiche. */}
+                          {prospect.phone ? (
+                            <a
+                              href={`tel:${prospect.phone}`}
+                              className="hover:text-foreground duration-(--duration-fast) ease-brand inline-flex shrink-0 items-center gap-1 tabular-nums transition-colors hover:underline"
+                            >
+                              <Phone className="size-3" aria-hidden />
+                              {prospect.phone}
+                            </a>
+                          ) : null}
+
+                          {!prospect.company_name && !prospect.phone ? (
+                            <span className="truncate">
+                              {prospect.email ?? "Sans coordonnée"}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                     </TableCell>
 
@@ -175,6 +256,10 @@ export function ProspectTable({
                     </TableCell>
 
                     <TableCell className="text-sm">
+                      <ProchaineAction prospect={prospect} fuseau={fuseau} />
+                    </TableCell>
+
+                    <TableCell className="text-sm">
                       {prospect.assigned_user?.name ?? (
                         <span className="text-muted-foreground italic">
                           Non affecté
@@ -182,7 +267,7 @@ export function ProspectTable({
                       )}
                     </TableCell>
 
-                    <TableCell className="text-muted-foreground text-sm">
+                    <TableCell className="text-muted-foreground text-right text-sm whitespace-nowrap">
                       {/* Le relatif se lit d'un coup d'œil ; la date exacte
                           reste en infobulle, sans quoi on ne peut pas comparer
                           deux lignes affichant toutes deux « il y a 3 jours ». */}
