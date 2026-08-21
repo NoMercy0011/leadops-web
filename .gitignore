@@ -42,3 +42,14 @@ next-env.d.ts
 
 # .env.example doit etre versionne (modele de configuration)
 !.env.example
+
+# Un seul gestionnaire de paquets : npm, avec package-lock.json.
+# Ces fichiers sont apparus par accident au lot 2, lors d'un `pnpm dlx` de
+# passage — pnpm-workspace.yaml contenait encore son placeholder non résolu.
+# Deux verrous versionnés côte à côte, c'est la CI qui choisit lequel fait foi.
+# Le champ `packageManager` de package.json verrouille le choix ; ces lignes
+# empêchent la réapparition silencieuse de l'autre.
+pnpm-lock.yaml
+pnpm-workspace.yaml
+yarn.lock
+bun.lockb
