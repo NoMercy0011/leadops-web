@@ -9,15 +9,15 @@ import { createProspect, type ActionState } from "./actions";
 import { ChampSelect, ChampTexte } from "@/components/form-fields";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { FieldGroup } from "@/components/ui/field";
 import type { Project, User } from "@/lib/types";
 
@@ -36,6 +36,22 @@ function SubmitButton() {
   );
 }
 
+/**
+ * Création d'un prospect, en panneau latéral.
+ *
+ * **Pourquoi un panneau plutôt qu'une boîte centrée.** Le formulaire compte
+ * neuf champs. Dans une boîte centrée, le contenu qui dépasse fait défiler
+ * *l'intérieur* d'un cadre qui flotte déjà au milieu de l'écran : deux
+ * surfaces de défilement imbriquées, et des repères — l'en-tête, les boutons —
+ * qui s'échappent par le haut ou par le bas. Un panneau occupe toute la
+ * hauteur de la fenêtre, si bien que l'essentiel du formulaire tient sans
+ * défiler ; ce qui déborde défile dans une seule zone, entre un en-tête et un
+ * pied qui, eux, ne bougent pas.
+ *
+ * Le nom reste `CreateProspectDialog` : un panneau de shadcn est construit sur
+ * la primitive Dialog de Radix et en garde tout le comportement — modalité,
+ * piège de focus, fermeture par Échap. Seule la présentation change.
+ */
 export function CreateProspectDialog({
   projets,
   utilisateurs,
@@ -63,24 +79,30 @@ export function CreateProspectDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
         <Button>
           <Plus className="size-4" aria-hidden />
           Nouveau prospect
         </Button>
-      </DialogTrigger>
+      </SheetTrigger>
 
-      <DialogContent className="shadow-dialog sm:max-w-lg">
-        <form action={formAction}>
-          <DialogHeader>
-            <DialogTitle>Nouveau prospect</DialogTitle>
-            <DialogDescription>
+      {/* Le panneau livré s'arrête à `sm:max-w-sm`, soit 384 px : les paires
+          de champs sur deux colonnes y seraient à l'étroit. On reprend la
+          largeur de la boîte remplacée. */}
+      <SheetContent className="shadow-dialog w-full gap-0 p-0 sm:max-w-lg">
+        {/* `min-h-0` sur le formulaire *et* sur la zone défilante : sans lui,
+            un enfant en `flex-1` prend sa hauteur de contenu au lieu de celle
+            du parent, et c'est la page entière qui défile. */}
+        <form action={formAction} className="flex min-h-0 flex-1 flex-col">
+          <SheetHeader className="border-b pr-12">
+            <SheetTitle>Nouveau prospect</SheetTitle>
+            <SheetDescription>
               Il entre à la première étape du pipeline de son projet.
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
 
-          <FieldGroup className="py-4">
+          <FieldGroup className="min-h-0 flex-1 overflow-y-auto p-4">
             <ChampSelect
               id="project_id"
               label="Projet"
@@ -176,16 +198,19 @@ export function CreateProspectDialog({
             </div>
           </FieldGroup>
 
-          <DialogFooter>
-            <DialogClose asChild>
+          {/* `mt-auto` du composant est neutralisé : la zone défilante occupe
+              déjà la place disponible, et le pied doit rester collé sous elle
+              plutôt que d'être repoussé une seconde fois. */}
+          <SheetFooter className="mt-0 flex-row justify-end border-t">
+            <SheetClose asChild>
               <Button type="button" variant="ghost">
                 Annuler
               </Button>
-            </DialogClose>
+            </SheetClose>
             <SubmitButton />
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
