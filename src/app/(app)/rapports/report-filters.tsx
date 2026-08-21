@@ -1,10 +1,9 @@
-"use client";
-
-import { useRouter, useSearchParams } from "next/navigation";
-import { useTransition } from "react";
-import { X } from "lucide-react";
-
-import { NativeSelect } from "@/components/form-fields";
+import {
+  BarreFiltres,
+  FamilleFiltre,
+  LigneFiltre,
+  type OptionFiltre,
+} from "@/components/filtres";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,8 +15,16 @@ import type { Project, User, Variant } from "@/lib/types";
  * L'axe « entreprise » de l'esquisse n'apparaît pas : il est appliqué en amont
  * par le cloisonnement, et l'exposer ici en ferait un filtre contournable.
  *
- * L'état vit dans l'URL : un rapport se partage par lien, et le retour arrière
- * doit ramener la sélection précédente.
+ * Même modèle de jetons que les prospects et le calendrier, à une exception
+ * près : **la période reste deux champs**. Un intervalle continu n'a pas de
+ * valeurs à énumérer, et le réduire à quelques choix figés — trente jours, ce
+ * mois — retirerait ce qu'un écran de rapport a de plus utile, la comparaison
+ * de deux périodes arbitraires.
+ *
+ * Elle passe donc par un formulaire GET avec un bouton, plutôt que par une
+ * navigation à chaque frappe : on pose les deux bornes, puis on applique une
+ * fois. L'ancienne version repartait au serveur dès la première saisie, avec
+ * une borne de fin encore vide.
  */
 export function ReportFilters({
   projets,
@@ -25,118 +32,130 @@ export function ReportFilters({
   utilisateurs,
   from,
   to,
+  parametres,
 }: {
   projets: Project[];
   variantes: Variant[];
   utilisateurs: User[];
   from: string;
   to: string;
+  parametres: URLSearchParams;
 }) {
-  const router = useRouter();
-  const params = useSearchParams();
-  const [pending, startTransition] = useTransition();
+  const base = "/rapports";
 
-  function appliquer(cle: string, valeur: string) {
-    const suivants = new URLSearchParams(params.toString());
-
-    if (valeur === "") {
-      suivants.delete(cle);
-    } else {
-      suivants.set(cle, valeur);
-    }
-
-    startTransition(() => router.replace(`/rapports?${suivants}`));
-  }
-
-  const actifs = ["project_id", "variant_id", "user_id", "from", "to"].filter(
-    (cle) => params.get(cle),
+  const autres = [...parametres.entries()].filter(
+    ([cle]) => cle !== "from" && cle !== "to",
   );
 
+  const optionsProjet: OptionFiltre[] = [
+    { valeur: "", libelle: "Tous" },
+    ...projets.map((projet) => ({
+      valeur: String(projet.id),
+      libelle: projet.name,
+    })),
+  ];
+
+  const optionsVariante: OptionFiltre[] = [
+    { valeur: "", libelle: "Toutes" },
+    ...variantes.map((variante) => ({
+      valeur: String(variante.id),
+      libelle: variante.name,
+    })),
+  ];
+
+  const optionsCommercial: OptionFiltre[] = [
+    { valeur: "", libelle: "Tous" },
+    ...utilisateurs.map((membre) => ({
+      valeur: String(membre.id),
+      libelle: membre.name,
+    })),
+  ];
+
   return (
-    <div
-      className="border-border bg-card grid gap-3 rounded-xl border p-4 sm:grid-cols-2 lg:grid-cols-5"
-      data-pending={pending || undefined}
-    >
-      <div className="space-y-1.5">
-        <Label htmlFor="from">Du</Label>
-        <Input
-          id="from"
-          type="date"
-          defaultValue={from}
-          onChange={(e) => appliquer("from", e.target.value)}
+    <BarreFiltres>
+      <LigneFiltre>
+        <form
+          action={base}
+          className="grid gap-x-3 gap-y-1 sm:grid-cols-[6.5rem_1fr] sm:items-start"
+        >
+          {autres.map(([cle, valeur]) => (
+            <input key={cle} type="hidden" name={cle} value={valeur} />
+          ))}
+
+          <span className="text-muted-foreground text-xs font-semibold tracking-wide uppercase sm:pt-2.5">
+            Période
+          </span>
+
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="space-y-1">
+              <Label htmlFor="from" className="text-xs">
+                Du
+              </Label>
+              <Input
+                id="from"
+                name="from"
+                type="date"
+                defaultValue={from}
+                className="w-auto"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="to" className="text-xs">
+                Au
+              </Label>
+              <Input
+                id="to"
+                name="to"
+                type="date"
+                defaultValue={to}
+                className="w-auto"
+              />
+            </div>
+
+            <Button type="submit" variant="outline" size="sm">
+              Appliquer
+            </Button>
+          </div>
+        </form>
+      </LigneFiltre>
+
+      <LigneFiltre>
+        <FamilleFiltre
+          libelle="Projet"
+          parametre="project_id"
+          options={optionsProjet}
+          valeurActive={parametres.get("project_id") ?? ""}
+          base={base}
+          parametres={parametres}
         />
-      </div>
+      </LigneFiltre>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="to">Au</Label>
-        <Input
-          id="to"
-          type="date"
-          defaultValue={to}
-          onChange={(e) => appliquer("to", e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="project_id">Projet</Label>
-        <NativeSelect
-          id="project_id"
-          value={params.get("project_id") ?? ""}
-          onChange={(e) => appliquer("project_id", e.target.value)}
-        >
-          <option value="">Tous</option>
-          {projets.map((projet) => (
-            <option key={projet.id} value={projet.id}>
-              {projet.name}
-            </option>
-          ))}
-        </NativeSelect>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="variant_id">Variante</Label>
-        <NativeSelect
-          id="variant_id"
-          value={params.get("variant_id") ?? ""}
-          onChange={(e) => appliquer("variant_id", e.target.value)}
-        >
-          <option value="">Toutes</option>
-          {variantes.map((variante) => (
-            <option key={variante.id} value={variante.id}>
-              {variante.name}
-            </option>
-          ))}
-        </NativeSelect>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="user_id">Commercial</Label>
-        <NativeSelect
-          id="user_id"
-          value={params.get("user_id") ?? ""}
-          onChange={(e) => appliquer("user_id", e.target.value)}
-        >
-          <option value="">Tous</option>
-          {utilisateurs.map((membre) => (
-            <option key={membre.id} value={membre.id}>
-              {membre.name}
-            </option>
-          ))}
-        </NativeSelect>
-      </div>
-
-      {actifs.length > 0 ? (
-        <div className="sm:col-span-2 lg:col-span-5">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => startTransition(() => router.replace("/rapports"))}
-          >
-            <X className="size-4" aria-hidden />
-            Réinitialiser les filtres
-          </Button>
-        </div>
+      {variantes.length > 0 ? (
+        <LigneFiltre>
+          <FamilleFiltre
+            libelle="Variante"
+            parametre="variant_id"
+            options={optionsVariante}
+            valeurActive={parametres.get("variant_id") ?? ""}
+            base={base}
+            parametres={parametres}
+          />
+        </LigneFiltre>
       ) : null}
-    </div>
+
+      {utilisateurs.length > 0 ? (
+        <LigneFiltre>
+          <FamilleFiltre
+            libelle="Commercial"
+            parametre="user_id"
+            options={optionsCommercial}
+            valeurActive={parametres.get("user_id") ?? ""}
+            base={base}
+            parametres={parametres}
+          />
+        </LigneFiltre>
+      ) : null}
+    </BarreFiltres>
   );
 }

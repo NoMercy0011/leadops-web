@@ -95,6 +95,7 @@ export function FamilleFiltre({
   base,
   parametres,
   efface = [],
+  compact = false,
 }: {
   /** Nom de la famille, à gauche de la rangée. */
   libelle: string;
@@ -106,14 +107,32 @@ export function FamilleFiltre({
   parametres: URLSearchParams;
   /** Paramètres à effacer quand cette famille change. */
   efface?: string[];
+  /**
+   * Rangée serrée, sans colonne d'étiquette.
+   *
+   * Pour une famille posée hors de la barre de filtres — l'échelle du
+   * calendrier, par exemple, qui vit sur la ligne de navigation. Le nom reste
+   * lisible par une synthèse vocale : il n'est masqué qu'à l'œil, et les
+   * libellés « Jour / Semaine / Mois » se passent d'en-tête à la lecture.
+   */
+  compact?: boolean;
 }) {
   const id = `filtre-${parametre}`;
 
   return (
-    <div className="grid gap-x-3 gap-y-1 sm:grid-cols-[6.5rem_1fr] sm:items-start">
+    <div
+      className={cn(
+        compact
+          ? "flex items-center"
+          : "grid gap-x-3 gap-y-1 sm:grid-cols-[6.5rem_1fr] sm:items-start",
+      )}
+    >
       <span
         id={id}
-        className="text-muted-foreground text-xs font-semibold tracking-wide uppercase sm:pt-1.5"
+        className={cn(
+          "text-muted-foreground text-xs font-semibold tracking-wide uppercase",
+          compact ? "sr-only" : "sm:pt-1.5",
+        )}
       >
         {libelle}
       </span>

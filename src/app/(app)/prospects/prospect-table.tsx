@@ -165,7 +165,7 @@ export function ProspectTable({
 
           <NativeSelect
             aria-label="Réaffecter à"
-            className="ml-auto w-auto min-w-44"
+            enveloppe="ml-auto w-auto min-w-44"
             value={destinataire}
             onChange={(e) => setDestinataire(e.target.value)}
           >

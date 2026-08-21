@@ -98,6 +98,14 @@ export default async function CalendrierPage({
       : Promise.resolve({ data: [], meta: { current_page: 1, last_page: 1, total: 0 } }),
   ]);
 
+  // Les filtres courants, pour que chaque jeton conserve ceux des autres
+  // familles au lieu de les remplacer.
+  const filtresActifs = new URLSearchParams(
+    Object.entries(params).flatMap(([cle, valeur]) =>
+      typeof valeur === "string" && valeur !== "" ? [[cle, valeur]] : [],
+    ),
+  );
+
   const [annee, mois] = ancre.split("-").map(Number);
 
   const resume = resumeAgenda(rendezVous, {
@@ -122,6 +130,7 @@ export default async function CalendrierPage({
         ancre={ancre}
         projets={projets.data}
         utilisateurs={utilisateurs.data}
+        parametres={filtresActifs}
       />
 
       {/* Les chiffres avant la grille : sans eux, un rendez-vous passé resté

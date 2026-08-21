@@ -124,7 +124,21 @@ export function MonthGrid({
                           rdv.status === "completed") &&
                           "text-muted-foreground",
                       )}
-                      title={`${formatHeure(rdv.scheduled_at, { timeZone: fuseau })} — ${rdv.prospect?.full_name ?? ""} (${rdv.status_label})`}
+                      // Le projet figure dans l'infobulle : une même personne
+                      // peut exister dans plusieurs projets — la modélisation
+                      // l'admet explicitement — et deux rendez-vous voisins
+                      // affichent alors le même nom à la même heure sans que
+                      // rien ne les distingue. La case est trop étroite pour
+                      // l'écrire en clair ; filtrer par projet lève
+                      // l'ambiguïté d'un clic.
+                      title={[
+                        formatHeure(rdv.scheduled_at, { timeZone: fuseau }),
+                        rdv.prospect?.full_name ?? "",
+                        rdv.project?.name ? `· ${rdv.project.name}` : "",
+                        `(${rdv.status_label})`,
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
                     >
                       <AppointmentTypeIcon
                         type={rdv.type}

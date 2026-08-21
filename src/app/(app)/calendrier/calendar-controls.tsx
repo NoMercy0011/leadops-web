@@ -1,10 +1,12 @@
-"use client";
-
-import { useRouter, useSearchParams } from "next/navigation";
-import { useTransition } from "react";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { NativeSelect } from "@/components/form-fields";
+import {
+  BarreFiltres,
+  FamilleFiltre,
+  LigneFiltre,
+  type OptionFiltre,
+} from "@/components/filtres";
 import { Button } from "@/components/ui/button";
 import type { Project, User } from "@/lib/types";
 
@@ -17,62 +19,71 @@ const LIBELLES: Record<Vue, string> = {
 };
 
 /**
+ * Statuts de rendez-vous, dans les mêmes teintes que leurs pastilles.
+ *
+ * La correspondance est reprise de `AppointmentStatusBadge` : un filtre et la
+ * ligne qu'il ramène doivent porter la même couleur, sans quoi le rapprochement
+ * se fait de tête à chaque fois.
+ */
+const STATUTS: OptionFiltre[] = [
+  { valeur: "", libelle: "Tous" },
+  { valeur: "planned", libelle: "Planifié", ton: "blue" },
+  { valeur: "completed", libelle: "Réalisé", ton: "sage" },
+  { valeur: "cancelled", libelle: "Annulé", ton: "slate" },
+  { valeur: "no_show", libelle: "Absent", ton: "red" },
+];
+
+/**
+ * Décale une date d'une période, en UTC.
+ *
+ * Le calcul porte sur une date sans heure : passer par un `Date` local ferait
+ * sauter un jour à chaque changement d'heure, et l'ancre est précisément ce
+ * qui ne doit pas bouger.
+ */
+function decaler(ancre: string, vue: Vue, sens: -1 | 1): string {
+  const [annee, mois, jour] = ancre.split("-").map(Number);
+  const date = new Date(Date.UTC(annee, mois - 1, jour));
+
+  if (vue === "jour") date.setUTCDate(date.getUTCDate() + sens);
+  else if (vue === "semaine") date.setUTCDate(date.getUTCDate() + sens * 7);
+  else date.setUTCMonth(date.getUTCMonth() + sens);
+
+  return date.toISOString().slice(0, 10);
+}
+
+/**
  * Navigation et filtres du calendrier.
  *
- * L'état vit dans l'URL, comme pour la liste des prospects : un manager doit
- * pouvoir envoyer « la semaine de Sarah sur le projet Santé » par lien, et le
- * retour arrière du navigateur doit ramener la période précédente.
+ * Même modèle que la liste des prospects : des jetons cliquables plutôt que
+ * des listes déroulantes, et un composant *serveur* — les jetons et les
+ * flèches sont des liens, il n'y a plus rien à exécuter dans le navigateur.
+ *
+ * L'état reste dans l'URL : un manager envoie « la semaine de Sarah sur le
+ * projet Santé » par lien, et le retour arrière ramène la période précédente.
  */
 export function CalendarControls({
   vue,
   ancre,
   projets,
   utilisateurs,
+  parametres,
 }: {
   vue: Vue;
   ancre: string;
   projets: Project[];
   utilisateurs: User[];
+  parametres: URLSearchParams;
 }) {
-  const router = useRouter();
-  const params = useSearchParams();
-  const [pending, startTransition] = useTransition();
+  const base = "/calendrier";
 
-  function naviguer(modifications: Record<string, string | null>) {
-    const suivants = new URLSearchParams(params.toString());
+  const versDate = (date: string | null) => {
+    const suivants = new URLSearchParams(parametres);
 
-    for (const [cle, valeur] of Object.entries(modifications)) {
-      if (valeur === null || valeur === "") {
-        suivants.delete(cle);
-      } else {
-        suivants.set(cle, valeur);
-      }
-    }
+    if (date === null) suivants.delete("date");
+    else suivants.set("date", date);
 
-    startTransition(() => router.replace(`/calendrier?${suivants}`));
-  }
-
-  /**
-   * Décale l'ancre d'une période.
-   *
-   * Le calcul se fait en UTC sur une date sans heure : passer par un `Date`
-   * local ferait sauter un jour à chaque changement d'heure, et l'ancre est
-   * précisément ce qui ne doit pas bouger.
-   */
-  function decaler(sens: -1 | 1) {
-    const [annee, mois, jour] = ancre.split("-").map(Number);
-    const date = new Date(Date.UTC(annee, mois - 1, jour));
-
-    if (vue === "jour") {
-      date.setUTCDate(date.getUTCDate() + sens);
-    } else if (vue === "semaine") {
-      date.setUTCDate(date.getUTCDate() + sens * 7);
-    } else {
-      date.setUTCMonth(date.getUTCMonth() + sens);
-    }
-
-    naviguer({ date: date.toISOString().slice(0, 10) });
-  }
+    return suivants.size > 0 ? `${base}?${suivants}` : base;
+  };
 
   const [annee, mois, jour] = ancre.split("-").map(Number);
   const reference = new Date(Date.UTC(annee, mois - 1, jour));
@@ -84,101 +95,107 @@ export function CalendarControls({
     timeZone: "UTC",
   }).format(reference);
 
+  const optionsProjet: OptionFiltre[] = [
+    { valeur: "", libelle: "Tous" },
+    ...projets.map((projet) => ({
+      valeur: String(projet.id),
+      libelle: projet.name,
+    })),
+  ];
+
+  const optionsCommercial: OptionFiltre[] = [
+    { valeur: "", libelle: "Tous" },
+    ...utilisateurs.map((membre) => ({
+      valeur: String(membre.id),
+      libelle: membre.name,
+    })),
+    { valeur: "none", libelle: "Sans commercial" },
+  ];
+
   return (
-    <div
-      className="flex flex-wrap items-center gap-2"
-      data-pending={pending || undefined}
-    >
-      <div className="flex items-center gap-1">
-        <Button
-          variant="outline"
-          size="icon"
-          className="size-8"
-          onClick={() => decaler(-1)}
-          aria-label="Période précédente"
-        >
-          <ChevronLeft className="size-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          className="size-8"
-          onClick={() => decaler(1)}
-          aria-label="Période suivante"
-        >
-          <ChevronRight className="size-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => naviguer({ date: null })}
-        >
-          Aujourd&apos;hui
-        </Button>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1">
+          <Button asChild variant="outline" size="icon" className="size-8">
+            <Link
+              href={versDate(decaler(ancre, vue, -1))}
+              aria-label="Période précédente"
+            >
+              <ChevronLeft className="size-4" aria-hidden />
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="icon" className="size-8">
+            <Link
+              href={versDate(decaler(ancre, vue, 1))}
+              aria-label="Période suivante"
+            >
+              <ChevronRight className="size-4" aria-hidden />
+            </Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link href={versDate(null)}>Aujourd&apos;hui</Link>
+          </Button>
+        </div>
+
+        <p className="font-heading min-w-44 text-base font-semibold first-letter:uppercase">
+          {titre}
+        </p>
+
+        {/* L'affichage n'est pas un filtre mais une échelle de lecture : il
+            reste sur la ligne de navigation, à côté de la période qu'il
+            découpe, plutôt que dans la barre du dessous. */}
+        <div className="ml-auto">
+          <FamilleFiltre
+            libelle="Vue"
+            parametre="vue"
+            options={(Object.keys(LIBELLES) as Vue[]).map((v) => ({
+              valeur: v,
+              libelle: LIBELLES[v],
+            }))}
+            valeurActive={vue}
+            base={base}
+            parametres={parametres}
+            compact
+          />
+        </div>
       </div>
 
-      <p className="font-heading min-w-44 text-base font-semibold first-letter:uppercase">
-        {titre}
-      </p>
-
-      <div className="ml-auto flex flex-wrap items-center gap-2">
-        <NativeSelect
-          aria-label="Affichage"
-          className="w-auto"
-          value={vue}
-          onChange={(e) => naviguer({ vue: e.target.value })}
-        >
-          {(Object.keys(LIBELLES) as Vue[]).map((v) => (
-            <option key={v} value={v}>
-              {LIBELLES[v]}
-            </option>
-          ))}
-        </NativeSelect>
-
-        <NativeSelect
-          aria-label="Filtrer par projet"
-          className="w-auto min-w-36"
-          value={params.get("project_id") ?? ""}
-          onChange={(e) => naviguer({ project_id: e.target.value })}
-        >
-          <option value="">Tous les projets</option>
-          {projets.map((projet) => (
-            <option key={projet.id} value={projet.id}>
-              {projet.name}
-            </option>
-          ))}
-        </NativeSelect>
+      <BarreFiltres>
+        <LigneFiltre>
+          <FamilleFiltre
+            libelle="Projet"
+            parametre="project_id"
+            options={optionsProjet}
+            valeurActive={parametres.get("project_id") ?? ""}
+            base={base}
+            parametres={parametres}
+          />
+        </LigneFiltre>
 
         {utilisateurs.length > 0 ? (
-          <NativeSelect
-            aria-label="Filtrer par commercial"
-            className="w-auto min-w-40"
-            value={params.get("user_id") ?? ""}
-            onChange={(e) => naviguer({ user_id: e.target.value })}
-          >
-            <option value="">Tous les commerciaux</option>
-            <option value="none">Sans commercial</option>
-            {utilisateurs.map((membre) => (
-              <option key={membre.id} value={membre.id}>
-                {membre.name}
-              </option>
-            ))}
-          </NativeSelect>
+          <LigneFiltre>
+            <FamilleFiltre
+              libelle="Commercial"
+              parametre="user_id"
+              options={optionsCommercial}
+              valeurActive={parametres.get("user_id") ?? ""}
+              base={base}
+              parametres={parametres}
+            />
+          </LigneFiltre>
         ) : null}
 
-        <NativeSelect
-          aria-label="Filtrer par statut"
-          className="w-auto min-w-32"
-          value={params.get("status") ?? ""}
-          onChange={(e) => naviguer({ status: e.target.value })}
-        >
-          <option value="">Tous les statuts</option>
-          <option value="planned">Planifié</option>
-          <option value="completed">Réalisé</option>
-          <option value="cancelled">Annulé</option>
-          <option value="no_show">Absent</option>
-        </NativeSelect>
-      </div>
+        <LigneFiltre>
+          <FamilleFiltre
+            libelle="Statut"
+            parametre="status"
+            options={STATUTS}
+            valeurActive={parametres.get("status") ?? ""}
+            base={base}
+            parametres={parametres}
+          />
+        </LigneFiltre>
+      </BarreFiltres>
     </div>
   );
 }

@@ -14,7 +14,11 @@ import {
   AppointmentStatusBadge,
   AppointmentTypeIcon,
 } from "@/components/appointment-badge";
-import { ChampSelect, ChampTexte, NativeSelect } from "@/components/form-fields";
+import {
+  ChampSelect,
+  ChampTexte,
+  NativeSelect,
+} from "@/components/form-fields";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -229,7 +233,8 @@ export function AppointmentsPanel({
                 <div className="flex items-center gap-2">
                   <NativeSelect
                     aria-label={`Statut du rendez-vous du ${formatDateHeure(rdv.scheduled_at, { timeZone: fuseau })}`}
-                    className="h-7 w-auto text-xs"
+                    className="h-7 text-xs"
+                    enveloppe="w-auto"
                     value={rdv.status}
                     disabled={pending}
                     onChange={(e) =>
@@ -288,10 +293,10 @@ export function AppointmentsPanel({
                           {formatDateHeure(rdv.scheduled_at, {
                             timeZone: fuseau,
                           })}
-                          {rdv.notes ? " — ses notes seront perdues." : "."} Pour
-                          un rendez-vous qui n&apos;a pas eu lieu, préférez le
-                          statut « Annulé » ou « Absent » : il reste alors dans
-                          l&apos;historique et dans les statistiques.
+                          {rdv.notes ? " — ses notes seront perdues." : "."}{" "}
+                          Pour un rendez-vous qui n&apos;a pas eu lieu, préférez
+                          le statut « Annulé » ou « Absent » : il reste alors
+                          dans l&apos;historique et dans les statistiques.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
