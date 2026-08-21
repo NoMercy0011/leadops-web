@@ -1,57 +1,35 @@
 import type { Metadata } from "next";
-import { CalendarDays } from "lucide-react";
 
-import { AgendaSummary } from "./agenda-summary";
-import { CalendarControls } from "./calendar-controls";
-import { AgendaList, MonthGrid } from "./month-grid";
-import { EmptyState } from "@/components/empty-state";
-import { PageHeader } from "@/components/page-header";
+import { CalendarControls, type Vue } from "./calendar-controls";
+import { MiniMois } from "./mini-mois";
+import { PanneauAgenda } from "./panneau-agenda";
 import { resumeAgenda } from "@/lib/agenda";
 import { listAppointments } from "@/lib/appointments";
 import { requireUser } from "@/lib/dal";
-import { aujourdhui } from "@/lib/format";
+import { aujourdhui, cleJour, formatNombre } from "@/lib/format";
 import { listCompanyUsers, listProjects } from "@/lib/projects";
+import { cn } from "@/lib/utils";
+import type { Appointment } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "Calendrier",
 };
 
-type Vue = "jour" | "semaine" | "mois";
+const AUCUN_UTILISATEUR = {
+  data: [],
+  meta: { current_page: 1, last_page: 1, total: 0 },
+};
 
 /**
- * Bornes de la période affichée, en dates **locales** `AAAA-MM-JJ`.
+ * Plage à demander à l'API : le mois affiché, débordé d'une semaine.
  *
- * Ce sont des dates et non des instants : l'API les interprète dans le fuseau
- * de l'entreprise. Envoyer un instant ISO ferait déraper la journée d'autant
- * d'heures que le décalage.
+ * La semaine de part et d'autre couvre deux besoins d'un coup — les cases de
+ * la grille qui appartiennent aux mois voisins, et une semaine sélectionnée
+ * qui chevauche un changement de mois.
  */
-function bornes(vue: Vue, ancre: string): { from: string; to: string } {
-  const [annee, mois, jour] = ancre.split("-").map(Number);
-  const reference = new Date(Date.UTC(annee, mois - 1, jour));
+function bornes(ancre: string): { from: string; to: string } {
+  const [annee, mois] = ancre.split("-").map(Number);
 
-  if (vue === "jour") {
-    return { from: ancre, to: ancre };
-  }
-
-  if (vue === "semaine") {
-    // Semaine du lundi au dimanche : `getUTCDay()` renvoie 0 pour dimanche,
-    // qu'on ramène en fin de semaine.
-    const decalage = (reference.getUTCDay() + 6) % 7;
-    const lundi = new Date(reference);
-    lundi.setUTCDate(reference.getUTCDate() - decalage);
-
-    const dimanche = new Date(lundi);
-    dimanche.setUTCDate(lundi.getUTCDate() + 6);
-
-    return {
-      from: lundi.toISOString().slice(0, 10),
-      to: dimanche.toISOString().slice(0, 10),
-    };
-  }
-
-  // La grille mensuelle déborde sur les mois voisins : la plage couvre donc
-  // une semaine de part et d'autre, sans quoi les premières et dernières
-  // cases resteraient vides alors qu'elles portent des rendez-vous.
   const debut = new Date(Date.UTC(annee, mois - 1, 1));
   debut.setUTCDate(debut.getUTCDate() - 7);
 
@@ -64,6 +42,60 @@ function bornes(vue: Vue, ancre: string): { from: string; to: string } {
   };
 }
 
+/** Lundi de la semaine contenant cette date locale. */
+function lundi(date: string): string {
+  const [annee, mois, jour] = date.split("-").map(Number);
+  const d = new Date(Date.UTC(annee, mois - 1, jour));
+
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+
+  return d.toISOString().slice(0, 10);
+}
+
+function plusDeJours(date: string, jours: number): string {
+  const [annee, mois, jour] = date.split("-").map(Number);
+  const d = new Date(Date.UTC(annee, mois - 1, jour + jours));
+
+  return d.toISOString().slice(0, 10);
+}
+
+const JOUR_LONG = new Intl.DateTimeFormat("fr-FR", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  timeZone: "UTC",
+});
+
+const JOUR_COURT = new Intl.DateTimeFormat("fr-FR", {
+  day: "numeric",
+  month: "long",
+  timeZone: "UTC",
+});
+
+const MOIS_LONG = new Intl.DateTimeFormat("fr-FR", {
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+const enUtc = (date: string) => new Date(`${date}T00:00:00Z`);
+
+/**
+ * Calendrier — grille de navigation à gauche, détail à droite.
+ *
+ * **L'écran ne défile pas.** La coquille se fixe à la hauteur de la fenêtre
+ * (voir le layout de l'espace) et cette page occupe ce qui reste : seul le
+ * panneau de détail défile, à sa place. Le repère mensuel ne bouge jamais, ce
+ * qui est tout l'intérêt d'une vue calendaire.
+ *
+ * **La grille montre la densité, le panneau montre le détail.** L'ancienne
+ * version affichait trois lignes tronquées par case puis « +2 autres » : ni
+ * lisible, ni comptable. Ici la grille répond à « quand », le panneau à
+ * « qui » — et il a la hauteur pour le dire en entier.
+ *
+ * L'échelle — jour, semaine, mois — pilote l'étendue du panneau, plus la
+ * grille : celle-ci suit toujours le mois de la date retenue.
+ */
 export default async function CalendrierPage({
   searchParams,
 }: PageProps<"/calendrier">) {
@@ -74,85 +106,161 @@ export default async function CalendrierPage({
   const encadrement = user.role === "admin_client" || user.role === "manager";
 
   const vue: Vue =
-    params.vue === "jour" || params.vue === "semaine" ? params.vue : "mois";
+    params.vue === "semaine" || params.vue === "mois" ? params.vue : "jour";
 
-  // L'ancre par défaut est la journée locale, pas celle du serveur.
+  // L'ancre par défaut est la journée locale de l'entreprise, pas celle du
+  // serveur : à Antananarivo, un serveur en UTC bascule trois heures trop tard.
+  const ceJour = aujourdhui({ timeZone: fuseau });
   const ancre =
     typeof params.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(params.date)
       ? params.date
-      : aujourdhui({ timeZone: fuseau });
-
-  const plage = bornes(vue, ancre);
+      : ceJour;
 
   const [rendezVous, projets, utilisateurs] = await Promise.all([
     listAppointments({
-      ...plage,
-      user_id:
-        typeof params.user_id === "string" ? params.user_id : undefined,
+      ...bornes(ancre),
+      user_id: typeof params.user_id === "string" ? params.user_id : undefined,
       project_id: Number(params.project_id) || undefined,
       status: typeof params.status === "string" ? params.status : undefined,
     }),
     listProjects(),
-    encadrement
-      ? listCompanyUsers()
-      : Promise.resolve({ data: [], meta: { current_page: 1, last_page: 1, total: 0 } }),
+    encadrement ? listCompanyUsers() : Promise.resolve(AUCUN_UTILISATEUR),
   ]);
 
-  // Les filtres courants, pour que chaque jeton conserve ceux des autres
-  // familles au lieu de les remplacer.
   const filtresActifs = new URLSearchParams(
     Object.entries(params).flatMap(([cle, valeur]) =>
       typeof valeur === "string" && valeur !== "" ? [[cle, valeur]] : [],
     ),
   );
 
+  // Effectifs par journée locale, pour les points de la grille. Le regroupement
+  // passe par `cleJour`, seul endroit qui connaît la conversion de fuseau.
+  const parJour = new Map<string, { total: number; retard: boolean }>();
+
+  for (const rdv of rendezVous) {
+    const jour = cleJour(rdv.scheduled_at, { timeZone: fuseau });
+    const actuel = parJour.get(jour) ?? { total: 0, retard: false };
+
+    parJour.set(jour, {
+      total: actuel.total + 1,
+      retard: actuel.retard || rdv.is_overdue,
+    });
+  }
+
+  // Étendue du panneau. Les bornes sont inclusives et comparées en chaînes :
+  // au format `AAAA-MM-JJ`, l'ordre lexicographique est l'ordre calendaire.
+  const [debut, fin, titre]: [string, string, string] =
+    vue === "jour"
+      ? [ancre, ancre, JOUR_LONG.format(enUtc(ancre))]
+      : vue === "semaine"
+        ? [
+            lundi(ancre),
+            plusDeJours(lundi(ancre), 6),
+            `Du ${JOUR_COURT.format(enUtc(lundi(ancre)))} au ${JOUR_COURT.format(
+              enUtc(plusDeJours(lundi(ancre), 6)),
+            )}`,
+          ]
+        : [
+            `${ancre.slice(0, 7)}-01`,
+            `${ancre.slice(0, 7)}-31`,
+            MOIS_LONG.format(enUtc(ancre)),
+          ];
+
+  const dansLEtendue = (rdv: Appointment) => {
+    const jour = cleJour(rdv.scheduled_at, { timeZone: fuseau });
+
+    return jour >= debut && jour <= fin;
+  };
+
+  const affiches = rendezVous.filter(dansLEtendue);
+
+  const resume = resumeAgenda(rendezVous, { fuseau, ceJour });
   const [annee, mois] = ancre.split("-").map(Number);
 
-  const resume = resumeAgenda(rendezVous, {
-    fuseau,
-    ceJour: aujourdhui({ timeZone: fuseau }),
-  });
+  const COMPTEURS = [
+    { libelle: "À clôturer", valeur: resume.aCloturer, alerte: true },
+    { libelle: "Aujourd’hui", valeur: resume.aujourdhui, alerte: false },
+    { libelle: "À venir", valeur: resume.aVenir, alerte: false },
+    { libelle: "Réalisés", valeur: resume.realises, alerte: false },
+    { libelle: "Absents", valeur: resume.absents, alerte: false },
+  ];
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        titre="Calendrier"
-        description={
-          <>
-            Rendez-vous de votre périmètre, affichés dans le fuseau de
-            l&apos;entreprise ({fuseau ?? "par défaut"}).
-          </>
-        }
-      />
-
+    // `min-h-0` est ce qui rend l'écran non défilant : sans lui, un enfant en
+    // `flex-1` prend sa hauteur de contenu au lieu de celle du parent, et c'est
+    // la coquille qui se met à défiler.
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
       <CalendarControls
         vue={vue}
         ancre={ancre}
+        titre={titre}
+        fuseau={fuseau}
         projets={projets.data}
         utilisateurs={utilisateurs.data}
         parametres={filtresActifs}
       />
 
-      {/* Les chiffres avant la grille : sans eux, un rendez-vous passé resté
-          « planifié » se découvre en parcourant les semaines une à une. */}
-      {rendezVous.length > 0 ? <AgendaSummary resume={resume} /> : null}
+      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[19rem_1fr]">
+        {/* Colonne de repérage : où sont les rendez-vous, et ce qui appelle une
+            action. Les cinq nombres tenaient auparavant dans des tuiles pleine
+            largeur, pour 311 px — ils occupent ici la place que la colonne
+            laissait vide. */}
+        {/* `self-start` : la carte s'arrête à sa hauteur utile. Étirée par la
+            grille, elle laissait trois cents pixels de vide encadrés d'une
+            bordure, ce qui se lit comme un bloc inachevé plutôt que comme une
+            colonne courte. */}
+        <div className="bg-card flex flex-col self-start overflow-hidden rounded-xl border">
+          <MiniMois
+            annee={annee}
+            mois={mois - 1}
+            jourChoisi={ancre}
+            ceJour={ceJour}
+            parJour={parJour}
+            base="/calendrier"
+            parametres={filtresActifs}
+          />
 
-      {rendezVous.length === 0 ? (
-        <EmptyState
-          icon={CalendarDays}
-          titre="Aucun rendez-vous sur cette période"
-          description="Les rendez-vous se planifient depuis la fiche d'un prospect : ils héritent alors de son projet et de son commercial."
-        />
-      ) : vue === "mois" ? (
-        <MonthGrid
-          annee={annee}
-          mois={mois - 1}
-          rendezVous={rendezVous}
+          <dl className="flex flex-col gap-1.5 border-t px-4 py-3">
+            {COMPTEURS.map((compteur) => (
+              <div
+                key={compteur.libelle}
+                className="flex items-baseline justify-between gap-3"
+              >
+                <dt
+                  className={cn(
+                    "text-xs",
+                    compteur.alerte && compteur.valeur > 0
+                      ? "text-warning-subtle-foreground font-medium"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {compteur.libelle}
+                </dt>
+                <dd
+                  className={cn(
+                    "font-mono text-sm tabular-nums",
+                    // L'accent n'apparaît que s'il y a matière : colorer un
+                    // zéro en alerte crie sans raison, et l'œil finit par
+                    // ignorer la couleur.
+                    compteur.alerte && compteur.valeur > 0
+                      ? "text-warning-subtle-foreground font-semibold"
+                      : undefined,
+                  )}
+                >
+                  {formatNombre(compteur.valeur)}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+
+        <PanneauAgenda
+          rendezVous={affiches}
+          titre={titre}
+          avecDate={vue !== "jour"}
           fuseau={fuseau}
         />
-      ) : (
-        <AgendaList rendezVous={rendezVous} fuseau={fuseau} />
-      )}
+      </div>
     </div>
   );
 }

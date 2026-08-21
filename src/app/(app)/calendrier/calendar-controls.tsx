@@ -1,16 +1,14 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, SlidersHorizontal } from "lucide-react";
 
 import {
-  BarreFiltres,
   FamilleFiltre,
-  LigneFiltre,
   type OptionFiltre,
 } from "@/components/filtres";
 import { Button } from "@/components/ui/button";
 import type { Project, User } from "@/lib/types";
 
-type Vue = "jour" | "semaine" | "mois";
+export type Vue = "jour" | "semaine" | "mois";
 
 const LIBELLES: Record<Vue, string> = {
   jour: "Jour",
@@ -19,11 +17,11 @@ const LIBELLES: Record<Vue, string> = {
 };
 
 /**
- * Statuts de rendez-vous, dans les mêmes teintes que leurs pastilles.
+ * Statuts de rendez-vous, dans les teintes de leurs pastilles.
  *
- * La correspondance est reprise de `AppointmentStatusBadge` : un filtre et la
- * ligne qu'il ramène doivent porter la même couleur, sans quoi le rapprochement
- * se fait de tête à chaque fois.
+ * Reprises de `AppointmentStatusBadge` : un filtre et la ligne qu'il ramène
+ * doivent porter la même couleur, sans quoi le rapprochement se refait de tête
+ * à chaque fois.
  */
 const STATUTS: OptionFiltre[] = [
   { valeur: "", libelle: "Tous" },
@@ -34,13 +32,13 @@ const STATUTS: OptionFiltre[] = [
 ];
 
 /**
- * Décale une date d'une période, en UTC.
+ * Décale la date d'ancrage d'une période, en UTC.
  *
  * Le calcul porte sur une date sans heure : passer par un `Date` local ferait
  * sauter un jour à chaque changement d'heure, et l'ancre est précisément ce
  * qui ne doit pas bouger.
  */
-function decaler(ancre: string, vue: Vue, sens: -1 | 1): string {
+export function decaler(ancre: string, vue: Vue, sens: -1 | 1): string {
   const [annee, mois, jour] = ancre.split("-").map(Number);
   const date = new Date(Date.UTC(annee, mois - 1, jour));
 
@@ -52,24 +50,32 @@ function decaler(ancre: string, vue: Vue, sens: -1 | 1): string {
 }
 
 /**
- * Navigation et filtres du calendrier.
+ * Commandes du calendrier : navigation, échelle, filtres.
  *
- * Même modèle que la liste des prospects : des jetons cliquables plutôt que
- * des listes déroulantes, et un composant *serveur* — les jetons et les
- * flèches sont des liens, il n'y a plus rien à exécuter dans le navigateur.
+ * **Les flèches déplacent ce qu'on lit, pas la grille.** L'échelle choisie —
+ * jour, semaine, mois — détermine à la fois l'étendue du panneau de détail et
+ * le pas des flèches. La grille, elle, suit toujours le mois de la date
+ * retenue : elle sert à se repérer, pas à afficher.
  *
- * L'état reste dans l'URL : un manager envoie « la semaine de Sarah sur le
- * projet Santé » par lien, et le retour arrière ramène la période précédente.
+ * **Les filtres se replient dans un `details` natif.** Fermés, ils tiennent
+ * sur une ligne et résument ce qui est appliqué ; ouverts, ils poussent la
+ * grille et le panneau, qui absorbent la différence sans que la page défile.
+ * Aucun script : l'élément est utilisable au clavier par construction.
  */
 export function CalendarControls({
   vue,
   ancre,
+  titre,
+  fuseau,
   projets,
   utilisateurs,
   parametres,
 }: {
   vue: Vue;
   ancre: string;
+  /** Libellé de la période affichée, déjà mis en forme par la page. */
+  titre: string;
+  fuseau?: string;
   projets: Project[];
   utilisateurs: User[];
   parametres: URLSearchParams;
@@ -84,16 +90,6 @@ export function CalendarControls({
 
     return suivants.size > 0 ? `${base}?${suivants}` : base;
   };
-
-  const [annee, mois, jour] = ancre.split("-").map(Number);
-  const reference = new Date(Date.UTC(annee, mois - 1, jour));
-
-  const titre = new Intl.DateTimeFormat("fr-FR", {
-    ...(vue === "mois"
-      ? { month: "long", year: "numeric" }
-      : { day: "numeric", month: "long", year: "numeric" }),
-    timeZone: "UTC",
-  }).format(reference);
 
   const optionsProjet: OptionFiltre[] = [
     { valeur: "", libelle: "Tous" },
@@ -112,11 +108,33 @@ export function CalendarControls({
     { valeur: "none", libelle: "Sans commercial" },
   ];
 
+  // Résumé des filtres appliqués, pour que la ligne fermée dise ce qu'elle
+  // cache. Un replié muet obligerait à l'ouvrir pour savoir s'il agit.
+  const nomActif = (options: OptionFiltre[], cle: string) =>
+    options.find((o) => o.valeur === (parametres.get(cle) ?? ""))?.libelle ??
+    "Tous";
+
+  const resume = [
+    parametres.get("project_id")
+      ? nomActif(optionsProjet, "project_id")
+      : "tous les projets",
+    parametres.get("user_id")
+      ? nomActif(optionsCommercial, "user_id")
+      : "tous les commerciaux",
+    parametres.get("status")
+      ? nomActif(STATUTS, "status")
+      : "tous les statuts",
+  ];
+
+  const filtre = ["project_id", "user_id", "status"].some((cle) =>
+    parametres.get(cle),
+  );
+
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-none flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <div className="flex items-center gap-1">
-          <Button asChild variant="outline" size="icon" className="size-8">
+          <Button asChild variant="outline" size="icon" className="size-7">
             <Link
               href={versDate(decaler(ancre, vue, -1))}
               aria-label="Période précédente"
@@ -124,7 +142,7 @@ export function CalendarControls({
               <ChevronLeft className="size-4" aria-hidden />
             </Link>
           </Button>
-          <Button asChild variant="outline" size="icon" className="size-8">
+          <Button asChild variant="outline" size="icon" className="size-7">
             <Link
               href={versDate(decaler(ancre, vue, 1))}
               aria-label="Période suivante"
@@ -137,16 +155,20 @@ export function CalendarControls({
           </Button>
         </div>
 
-        <p className="font-heading min-w-44 text-base font-semibold first-letter:uppercase">
+        <p className="font-heading text-[0.9375rem] font-semibold first-letter:uppercase">
           {titre}
         </p>
 
-        {/* L'affichage n'est pas un filtre mais une échelle de lecture : il
-            reste sur la ligne de navigation, à côté de la période qu'il
-            découpe, plutôt que dans la barre du dessous. */}
+        {/* Le fuseau conditionne toutes les heures affichées : il se dit une
+            fois, à côté de la période, plutôt que dans une description de page
+            que l'écran n'a plus. */}
+        {fuseau ? (
+          <span className="text-muted-foreground text-xs">{fuseau}</span>
+        ) : null}
+
         <div className="ml-auto">
           <FamilleFiltre
-            libelle="Vue"
+            libelle="Étendue affichée"
             parametre="vue"
             options={(Object.keys(LIBELLES) as Vue[]).map((v) => ({
               valeur: v,
@@ -160,8 +182,16 @@ export function CalendarControls({
         </div>
       </div>
 
-      <BarreFiltres>
-        <LigneFiltre>
+      <details className="bg-card rounded-xl border" open={filtre}>
+        <summary className="text-muted-foreground marker:content-none flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-[0.8125rem]">
+          <SlidersHorizontal className="size-3.5 shrink-0" aria-hidden />
+          Filtres —{" "}
+          <span className={filtre ? "text-foreground font-medium" : undefined}>
+            {resume.join(", ")}
+          </span>
+        </summary>
+
+        <div className="flex flex-col gap-2 px-3 pt-1 pb-3">
           <FamilleFiltre
             libelle="Projet"
             parametre="project_id"
@@ -170,10 +200,8 @@ export function CalendarControls({
             base={base}
             parametres={parametres}
           />
-        </LigneFiltre>
 
-        {utilisateurs.length > 0 ? (
-          <LigneFiltre>
+          {utilisateurs.length > 0 ? (
             <FamilleFiltre
               libelle="Commercial"
               parametre="user_id"
@@ -182,10 +210,8 @@ export function CalendarControls({
               base={base}
               parametres={parametres}
             />
-          </LigneFiltre>
-        ) : null}
+          ) : null}
 
-        <LigneFiltre>
           <FamilleFiltre
             libelle="Statut"
             parametre="status"
@@ -194,8 +220,8 @@ export function CalendarControls({
             base={base}
             parametres={parametres}
           />
-        </LigneFiltre>
-      </BarreFiltres>
+        </div>
+      </details>
     </div>
   );
 }
