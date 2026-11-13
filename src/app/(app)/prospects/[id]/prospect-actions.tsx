@@ -43,9 +43,12 @@ function useAction() {
 export function StageSelector({
   prospect,
   etapes,
+  lectureSeule = false,
 }: {
   prospect: Prospect;
   etapes: PipelineStage[];
+  /** Archivé ou effacé (lot 9) : visible, désactivé — décision P7. */
+  lectureSeule?: boolean;
 }) {
   const { pending, executer } = useAction();
 
@@ -55,7 +58,7 @@ export function StageSelector({
       <NativeSelect
         id="stage"
         value={prospect.stage_id}
-        disabled={pending}
+        disabled={pending || lectureSeule}
         onChange={(e) => executer(() => changeStage(prospect.id, Number(e.target.value)))}
       >
         {etapes.map((etape) => (
@@ -124,7 +127,14 @@ export function AssignSelector({
   );
 }
 
-export function NextActionForm({ prospect }: { prospect: Prospect }) {
+export function NextActionForm({
+  prospect,
+  lectureSeule = false,
+}: {
+  prospect: Prospect;
+  /** Archivé ou effacé (lot 9) : visible, désactivé — décision P7. */
+  lectureSeule?: boolean;
+}) {
   const { pending, executer } = useAction();
 
   return (
@@ -132,27 +142,29 @@ export function NextActionForm({ prospect }: { prospect: Prospect }) {
       action={(formData) => executer(() => planNextAction(prospect.id, formData))}
       className="space-y-3"
     >
-      <Field>
-        <FieldLabel htmlFor="next_action_at">Prochaine action</FieldLabel>
+      <fieldset disabled={lectureSeule} className="space-y-3">
+        <Field>
+          <FieldLabel htmlFor="next_action_at">Prochaine action</FieldLabel>
+          <Input
+            id="next_action_at"
+            name="next_action_at"
+            type="datetime-local"
+            defaultValue={prospect.next_action_at?.slice(0, 16) ?? ""}
+          />
+          <FieldDescription>
+            Laisser vide pour annuler la relance.
+          </FieldDescription>
+        </Field>
+
         <Input
-          id="next_action_at"
-          name="next_action_at"
-          type="datetime-local"
-          defaultValue={prospect.next_action_at?.slice(0, 16) ?? ""}
+          name="next_action_note"
+          placeholder="Objet de la relance"
+          defaultValue={prospect.next_action_note ?? ""}
+          aria-label="Objet de la relance"
         />
-        <FieldDescription>
-          Laisser vide pour annuler la relance.
-        </FieldDescription>
-      </Field>
+      </fieldset>
 
-      <Input
-        name="next_action_note"
-        placeholder="Objet de la relance"
-        defaultValue={prospect.next_action_note ?? ""}
-        aria-label="Objet de la relance"
-      />
-
-      <Button type="submit" size="sm" variant="secondary" disabled={pending}>
+      <Button type="submit" size="sm" variant="secondary" disabled={pending || lectureSeule}>
         {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
         Enregistrer
       </Button>
@@ -167,7 +179,14 @@ export function NextActionForm({ prospect }: { prospect: Prospect }) {
  * datée, attribuée à son auteur, et ne s'écrase pas — ce qu'un champ texte
  * unique ferait à chaque saisie.
  */
-export function NoteForm({ prospectId }: { prospectId: number }) {
+export function NoteForm({
+  prospectId,
+  lectureSeule = false,
+}: {
+  prospectId: number;
+  /** Archivé (lot 9) : visible, désactivé — décision P7. */
+  lectureSeule?: boolean;
+}) {
   const { pending, executer } = useAction();
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -184,10 +203,11 @@ export function NoteForm({ prospectId }: { prospectId: number }) {
         name="note"
         rows={3}
         required
+        disabled={lectureSeule}
         placeholder="Appel effectué, rappeler lundi…"
         aria-label="Nouvelle note"
       />
-      <Button type="submit" size="sm" disabled={pending}>
+      <Button type="submit" size="sm" disabled={pending || lectureSeule}>
         {pending ? (
           <LoaderCircle className="size-4 animate-spin" aria-hidden />
         ) : (

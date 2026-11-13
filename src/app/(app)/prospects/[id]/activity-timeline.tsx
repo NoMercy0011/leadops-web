@@ -1,5 +1,11 @@
 import {
+  Archive,
+  ArchiveRestore,
   ArrowRight,
+  CalendarCheck,
+  CalendarClock,
+  CalendarPlus,
+  Eraser,
   FileDown,
   MessageSquare,
   PencilLine,
@@ -32,6 +38,12 @@ const ICONES: Record<ActivityType, LucideIcon> = {
   note_added: MessageSquare,
   next_action_planned: PencilLine,
   fields_updated: PencilLine,
+  appointment_scheduled: CalendarPlus,
+  appointment_rescheduled: CalendarClock,
+  appointment_status_changed: CalendarCheck,
+  archived: Archive,
+  unarchived: ArchiveRestore,
+  erased: Eraser,
 };
 
 function decrire(activite: ProspectActivity): React.ReactNode {
@@ -69,7 +81,13 @@ function decrire(activite: ProspectActivity): React.ReactNode {
       );
 
     case "note_added":
-      return <span className="whitespace-pre-line">{String(p.note ?? "")}</span>;
+      // Sans contenu : la fiche a été effacée, et la note avec elle (lot 9,
+      // écran S-11). L'événement reste, pour l'historique.
+      return p.note ? (
+        <span className="whitespace-pre-line">{String(p.note)}</span>
+      ) : (
+        <span className="text-muted-foreground">Note ajoutée — contenu effacé</span>
+      );
 
     case "next_action_planned":
       return p.at ? (

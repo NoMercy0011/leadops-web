@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Archive,
@@ -9,12 +10,13 @@ import {
   Eraser,
   LoaderCircle,
   Pencil,
+  TriangleAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   archiveProspect,
-  deleteProspect,
+  eraseProspect,
   updateProspect,
   type ActionState,
 } from "../actions";
@@ -43,7 +45,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { FieldGroup } from "@/components/ui/field";
-import type { Prospect } from "@/lib/types";
+import type { AutreFiche, Prospect } from "@/lib/types";
 
 const INITIAL: ActionState = {};
 
@@ -72,6 +74,7 @@ function SubmitButton() {
 export function EditProspectDialog({
   prospect,
   compact = false,
+  lectureSeule = false,
 }: {
   prospect: Prospect;
   /**
@@ -80,6 +83,8 @@ export function EditProspectDialog({
    * trente lignes, « Modifier » répété trente fois ne dit pas quoi.
    */
   compact?: boolean;
+  /** Archivé (lot 9) : le bouton reste visible et désactivé — décision P7. */
+  lectureSeule?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -109,11 +114,12 @@ export function EditProspectDialog({
             size="icon-sm"
             className="text-muted-foreground hover:text-foreground"
             aria-label={`Modifier ${prospect.full_name}`}
+            disabled={lectureSeule}
           >
             <Pencil className="size-4" aria-hidden />
           </Button>
         ) : (
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" disabled={lectureSeule}>
             <Pencil className="size-4" aria-hidden />
             Modifier
           </Button>
@@ -338,40 +344,62 @@ export function ArchiveProspectButton({
 }
 
 /**
- * Effacement définitif, réservé à l'Admin Client par la policy.
+ * Effacement des données personnelles — écran S-10 de la planche du lot 9.
  *
  * **Ce n'est pas la façon de retirer un prospect du pipeline** — c'est
- * l'archivage qui s'en charge, sans rien détruire. Cette action existe pour
- * une seule raison : un prospect est une personne physique, et le droit à
- * l'effacement (RGPD, art. 17) peut obliger à supprimer réellement ses
- * données. L'archivage n'y répond pas, puisqu'il les conserve.
+ * l'archivage qui s'en charge, sans rien détruire. Cette action répond au
+ * droit à l'effacement (RGPD, art. 17) : elle **anonymise** la fiche. La
+ * fiche reste, sans rien qui désigne la personne, et les statistiques du
+ * projet restent justes. Réservée à l'Admin Client, irréversible.
  *
- * D'où le libellé, qui nomme cette fonction-là plutôt que le geste : «
- * Supprimer » se lisait comme une variante plus expéditive d'« Archiver », et
- * invitait à l'erreur que l'archivage a précisément été introduit pour éviter.
+ * Les textes de cette boîte sont **provisoires**, à valider sur le plan
+ * juridique en fin de projet (hypothèse H-1 de la note du lot 9).
  */
-export function DeleteProspectButton({ prospect }: { prospect: Prospect }) {
+export function EraseProspectButton({ prospect }: { prospect: Prospect }) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+  // Le serveur ne renvoie cette liste qu'une fois : elle vit dans la boîte, et
+  // disparaît quand on la ferme (question ouverte de la planche, tranchée).
+  const [resultat, setResultat] = useState<ActionState | null>(null);
 
-  async function supprimer() {
+  // La personne ne se nomme qu'avant l'effacement : la boîte de résultat est
+  // rendue après le rafraîchissement, quand `full_name` vaut déjà « Prospect
+  // effacé ».
+  const [nom] = useState(prospect.full_name);
+
+  async function effacer() {
     setPending(true);
-    const resultat = await deleteProspect(prospect.id);
+    setErreur(null);
+    const reponse = await eraseProspect(prospect.id);
+    setPending(false);
 
-    if (resultat.success) {
-      toast.success(resultat.success);
-      // La fiche n'existe plus : y rester renverrait un 404 au premier
-      // rafraîchissement.
-      router.push("/prospects");
+    if (reponse.success) {
+      setResultat(reponse);
+      router.refresh();
       return;
     }
 
-    setPending(false);
-    if (resultat.message) toast.error(resultat.message);
+    // Déjà effacée, depuis un autre onglet : on le dit dans la boîte, et la
+    // fiche se recharge en « Prospect effacé ».
+    if (reponse.code === "erasure.already_erased") {
+      router.refresh();
+    }
+
+    setErreur(reponse.message ?? "Le service est momentanément indisponible.");
+  }
+
+  function fermer(ouverte: boolean) {
+    setOpen(ouverte);
+    if (!ouverte) {
+      setResultat(null);
+      setErreur(null);
+    }
   }
 
   return (
-    <AlertDialog>
+    <AlertDialog open={open} onOpenChange={fermer}>
       <AlertDialogTrigger asChild>
         <Button
           variant="ghost"
@@ -384,46 +412,137 @@ export function DeleteProspectButton({ prospect }: { prospect: Prospect }) {
       </AlertDialogTrigger>
 
       <AlertDialogContent className="shadow-dialog">
-        <AlertDialogHeader>
-          <AlertDialogTitle>
-            Effacer les données de « {prospect.full_name} » ?
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            À n&apos;utiliser que pour répondre à une demande d&apos;effacement.
-            Pour retirer ce prospect du pipeline, archivez-le : rien n&apos;est
-            détruit et l&apos;opération se défait.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
+        {resultat ? (
+          <ResultatEffacement autresFiches={resultat.autresFiches ?? []} />
+        ) : (
+          <>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Effacer les données personnelles de « {nom} » ?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                À utiliser pour répondre à une demande d&apos;effacement de cette
+                personne. Pour retirer un prospect du pipeline, archivez-le
+                plutôt : rien n&apos;est détruit et l&apos;opération se défait.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
 
-        {/* Aplat discret et jeton de texte assortis : `--destructive-subtle`
-            va avec `--destructive-subtle-foreground`, jamais avec le jeton de
-            l'aplat plein, invisible dessus en thème sombre. */}
-        <div className="border-destructive/30 bg-destructive-subtle text-destructive-subtle-foreground space-y-1 rounded-md border px-3 py-2 text-sm">
-          <p className="font-medium">Ce qui disparaît définitivement</p>
-          <p className="leading-relaxed">
-            La fiche, ses réponses de qualification, ses rendez-vous et tout son
-            historique d&apos;interactions. Les durées de cycle et les taux déjà
-            calculés sur ce dossier ne pourront pas être reconstitués.
-          </p>
-        </div>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>Annuler</AlertDialogCancel>
-          <AlertDialogAction
-            disabled={pending}
-            onClick={(event) => {
-              // Sans ceci, Radix referme la boîte et démonte le bouton avant
-              // que l'action serveur ne parte.
-              event.preventDefault();
-              void supprimer();
-            }}
-          >
-            {pending ? (
-              <LoaderCircle className="size-4 animate-spin" aria-hidden />
+            {/* Aplat discret et jeton de texte assortis : `--destructive-subtle`
+                va avec `--destructive-subtle-foreground`, jamais avec le jeton
+                de l'aplat plein, invisible dessus en thème sombre. */}
+            <div className="border-destructive/30 bg-destructive-subtle text-destructive-subtle-foreground space-y-1 rounded-md border px-3 py-2 text-sm">
+              <p className="font-medium">Ce qui est effacé, définitivement</p>
+              <p className="leading-relaxed">
+                Les nom, prénom, société, téléphone, email, adresse et notes de
+                la fiche ; l&apos;objet de la prochaine relance ; les réponses
+                libres et les dates du questionnaire ; les notes et les lieux de
+                ses rendez-vous ; le contenu des notes de son historique.
+              </p>
+            </div>
+
+            <div className="space-y-3 text-sm">
+              <div className="space-y-1">
+                <p className="font-medium">
+                  Ce qui est gardé, sans rien qui la désigne
+                </p>
+                <p className="text-muted-foreground leading-relaxed">
+                  Le projet, l&apos;étape, le commercial, les dates et les étapes
+                  franchies (qualification, conversion, perte), les réponses à
+                  choix et les nombres. Les statistiques du projet restent
+                  justes.
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-medium">Ses autres fiches</p>
+                <p className="text-muted-foreground leading-relaxed">
+                  Si cette personne figure dans d&apos;autres projets de
+                  l&apos;entreprise, ces fiches ne sont pas effacées. Elles vous
+                  seront listées à la fin, pour que vous les traitiez une à une.
+                </p>
+              </div>
+            </div>
+
+            {erreur ? (
+              <p role="alert" className="text-destructive-subtle-foreground text-sm">
+                {erreur}
+              </p>
             ) : null}
-            Effacer définitivement
-          </AlertDialogAction>
-        </AlertDialogFooter>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={pending}>Annuler</AlertDialogCancel>
+              {/* Contour rouge (décision P9) : seul geste irréversible du
+                  produit, il ne ressemble à aucun autre bouton de
+                  confirmation. */}
+              <AlertDialogAction
+                disabled={pending}
+                className="border-destructive text-destructive-subtle-foreground hover:bg-destructive-subtle border bg-transparent"
+                onClick={(event) => {
+                  // Sans ceci, Radix referme la boîte et démonte le bouton
+                  // avant que l'action serveur ne parte.
+                  event.preventDefault();
+                  void effacer();
+                }}
+              >
+                {pending ? (
+                  <LoaderCircle className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  <Eraser className="size-4" aria-hidden />
+                )}
+                Effacer définitivement
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </>
+        )}
       </AlertDialogContent>
     </AlertDialog>
+  );
+}
+
+/** Boîte de résultat de l'effacement (S-10, « Résultat »). Texte provisoire (H-1). */
+function ResultatEffacement({ autresFiches }: { autresFiches: AutreFiche[] }) {
+  return (
+    <>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Données personnelles effacées</AlertDialogTitle>
+        <AlertDialogDescription>
+          La fiche s&apos;affiche désormais « Prospect effacé ». L&apos;effacement
+          est tracé au journal, avec votre nom et la date, sans donnée
+          personnelle.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+
+      {autresFiches.length > 0 ? (
+        <div className="border-warning/30 bg-warning-subtle text-warning-subtle-foreground space-y-2 rounded-md border px-3 py-2 text-sm">
+          <p className="flex items-center gap-2 font-medium">
+            <TriangleAlert className="size-4 shrink-0" aria-hidden />
+            {autresFiches.length === 1
+              ? "Cette personne a 1 autre fiche, qui n'a pas été effacée"
+              : `Cette personne a ${autresFiches.length} autres fiches, qui n'ont pas été effacées`}
+          </p>
+          <ul className="space-y-1">
+            {autresFiches.map((fiche) => (
+              <li key={fiche.id}>
+                {fiche.project} —{" "}
+                <Link href={`/prospects/${fiche.id}`} className="underline">
+                  ouvrir la fiche
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="leading-relaxed">
+            Ouvrez chacune pour l&apos;effacer si la demande la concerne aussi.
+            Cette liste ne s&apos;affichera plus une fois la boîte fermée.
+          </p>
+        </div>
+      ) : (
+        <p className="text-muted-foreground text-sm">
+          Aucune autre fiche de cette personne dans l&apos;entreprise.
+        </p>
+      )}
+
+      <AlertDialogFooter>
+        <AlertDialogCancel>Fermer</AlertDialogCancel>
+      </AlertDialogFooter>
+    </>
   );
 }

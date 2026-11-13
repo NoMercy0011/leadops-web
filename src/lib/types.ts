@@ -152,6 +152,13 @@ export interface Prospect {
    */
   archived_at: string | null;
   is_archived: boolean;
+  /**
+   * Données personnelles effacées (lot 9, contrat §8). La fiche reste, pour
+   * les statistiques : `full_name` vaut « Prospect effacé », `first_name`
+   * une chaîne vide, et plus aucune écriture n'est acceptée.
+   */
+  erased_at: string | null;
+  is_erased: boolean;
   converted_at: string | null;
   lost_at: string | null;
   /** Dérivée du journal côté API, jamais stockée. */
@@ -161,6 +168,19 @@ export interface Prospect {
   assigned_user?: User | null;
   created_at: string | null;
   updated_at: string | null;
+}
+
+/** Une autre fiche de la même personne, signalée à l'effacement (contrat §8). */
+export interface AutreFiche {
+  id: number;
+  project_id: number;
+  project: string;
+}
+
+/** Réponse de `POST /prospects/{id}/erase` (contrat §8). */
+export interface ErasureResult {
+  data: Prospect;
+  autres_fiches: AutreFiche[];
 }
 
 /**
@@ -187,7 +207,15 @@ export type ActivityType =
   | "note_added"
   | "imported"
   | "next_action_planned"
-  | "fields_updated";
+  | "fields_updated"
+  // Types que l'API envoyait déjà sans que le front les nomme (rendez-vous,
+  // lot 6 ; archivage, lot 9), et l'effacement du lot 9.
+  | "appointment_scheduled"
+  | "appointment_rescheduled"
+  | "appointment_status_changed"
+  | "archived"
+  | "unarchived"
+  | "erased";
 
 export interface ProspectActivity {
   id: number;

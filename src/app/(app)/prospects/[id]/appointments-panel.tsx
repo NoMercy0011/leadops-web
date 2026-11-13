@@ -159,10 +159,16 @@ export function AppointmentsPanel({
   prospectId,
   rendezVous,
   fuseau,
+  lectureSeule = false,
+  donneesEffacees = false,
 }: {
   prospectId: number;
   rendezVous: Appointment[];
   fuseau?: string;
+  /** Archivé ou effacé (lot 9) : les rendez-vous restent lisibles, rien ne s'écrit — décision P7. */
+  lectureSeule?: boolean;
+  /** Fiche effacée : le lieu et les notes ont été vidés (écran S-11). */
+  donneesEffacees?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [ouvert, setOuvert] = useState(false);
@@ -221,6 +227,11 @@ export function AppointmentsPanel({
                       {rdv.user ? ` · ${rdv.user.name}` : " · non affecté"}
                       {rdv.location ? ` · ${rdv.location}` : ""}
                     </p>
+                    {donneesEffacees ? (
+                      <p className="text-muted-foreground text-xs italic">
+                        Lieu et notes effacés.
+                      </p>
+                    ) : null}
                   </div>
 
                   <AppointmentStatusBadge
@@ -236,7 +247,7 @@ export function AppointmentsPanel({
                     className="h-7 text-xs"
                     enveloppe="w-auto"
                     value={rdv.status}
-                    disabled={pending}
+                    disabled={pending || lectureSeule}
                     onChange={(e) =>
                       executer(() =>
                         changeAppointmentStatus(
@@ -258,7 +269,7 @@ export function AppointmentsPanel({
                     variant="ghost"
                     size="icon"
                     className="ml-auto size-7"
-                    disabled={pending}
+                    disabled={pending || lectureSeule}
                     onClick={() => {
                       setOuvert(false);
                       setEnEdition(rdv.id);
@@ -277,7 +288,7 @@ export function AppointmentsPanel({
                         variant="ghost"
                         size="icon"
                         className="text-muted-foreground hover:text-destructive duration-(--duration-fast) ease-brand size-7 transition-colors"
-                        disabled={pending}
+                        disabled={pending || lectureSeule}
                         aria-label="Supprimer ce rendez-vous"
                       >
                         <Trash2 className="size-3.5" />
@@ -340,7 +351,7 @@ export function AppointmentsPanel({
             setEnEdition(null);
             setOuvert(true);
           }}
-          disabled={pending}
+          disabled={pending || lectureSeule}
         >
           <CalendarPlus className="size-4" aria-hidden />
           Planifier un rendez-vous

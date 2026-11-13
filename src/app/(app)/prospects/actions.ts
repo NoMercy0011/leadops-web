@@ -4,7 +4,12 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { ApiError, apiFetch } from "@/lib/api";
-import type { BulkAssignReport, ImportReport } from "@/lib/types";
+import type {
+  AutreFiche,
+  BulkAssignReport,
+  ErasureResult,
+  ImportReport,
+} from "@/lib/types";
 
 const BASE_PATH = "/prospects";
 
@@ -12,6 +17,10 @@ export interface ActionState {
   message?: string;
   success?: string;
   fieldErrors?: Record<string, string>;
+  /** Code stable de l'API (`archive.read_only`…) : l'écran distingue les refus par lui, jamais par le message. */
+  code?: string;
+  /** Effacement seulement : les autres fiches de la même personne, signalées une seule fois (contrat §8). */
+  autresFiches?: AutreFiche[];
 }
 
 /**
@@ -27,14 +36,28 @@ function revaliderProspects(): void {
 function toState(error: unknown): ActionState {
   if (error instanceof ApiError) {
     if (error.errors) {
+      const fieldErrors = Object.fromEntries(
+        Object.entries(error.errors).map(([champ, messages]) => [
+          champ,
+          messages[0],
+        ]),
+      );
+
+      // Le premier message de champ sert aussi de message général (lot 9,
+      // faille F13) : les écrans qui n'ont pas de champ où l'afficher —
+      // popover d'étape, actions de projet — restaient muets, et la boîte
+      // se refermait sans un mot.
       return {
-        fieldErrors: Object.fromEntries(
-          Object.entries(error.errors).map(([champ, messages]) => [
-            champ,
-            messages[0],
-          ]),
-        ),
+        fieldErrors,
+        message: Object.values(fieldErrors)[0],
+        code: error.code,
       };
+    }
+
+    // Abonnement suspendu : un 403 qui n'a rien d'une question de périmètre.
+    // Le message de l'API dit quoi faire, il passe tel quel.
+    if (error.code === "subscription.writes_blocked") {
+      return { message: error.message, code: error.code };
     }
 
     // 403 et 404 se confondent volontairement : distinguer « interdit » de
@@ -45,7 +68,7 @@ function toState(error: unknown): ActionState {
       return { message: "Ce prospect n'est plus dans votre périmètre." };
     }
 
-    return { message: error.message };
+    return { message: error.message, code: error.code };
   }
 
   return { message: "Le service est momentanément indisponible." };
@@ -178,25 +201,44 @@ export async function updateProspect(
 }
 
 /**
- * Suppression définitive.
+ * Effacement des données personnelles (lot 9, règle R4 ; contrat §8).
  *
- * Réservée à l'Admin Client par la policy — un commercial qui pourrait
- * supprimer effacerait au passage l'historique d'activités qui alimente les
- * KPIs de durée de cycle, et ces données ne se reconstituent pas.
+ * Une **anonymisation**, pas une suppression : la fiche reste, sans rien qui
+ * désigne la personne, et les statistiques du projet restent justes.
+ * Réservée à l'Admin Client par la policy, possible même abonnement
+ * suspendu. La fiche reste affichée : elle se recharge en « Prospect
+ * effacé ».
  *
- * Le front redirige lui-même : la fiche vient de disparaître, la laisser
- * affichée renverrait un 404 au premier rafraîchissement.
+ * `autresFiches` n'est renvoyée qu'une fois par le serveur : l'écran la
+ * montre dans la boîte de résultat, et elle ne se retrouve plus ensuite.
  */
-export async function deleteProspect(prospectId: number): Promise<ActionState> {
+export async function eraseProspect(prospectId: number): Promise<ActionState> {
+  if (!Number.isInteger(prospectId) || prospectId <= 0) {
+    return { message: "Prospect introuvable." };
+  }
+
+  let resultat: ErasureResult;
+
   try {
-    await apiFetch(`/prospects/${prospectId}`, { method: "DELETE" });
+    resultat = await apiFetch<ErasureResult>(`/prospects/${prospectId}/erase`, {
+      method: "POST",
+      unwrap: false,
+    });
   } catch (error) {
+    if (error instanceof ApiError && error.code === "erasure.already_erased") {
+      revaliderProspects();
+      return { message: "Cette fiche a déjà été effacée.", code: error.code };
+    }
+
     return toState(error);
   }
 
   revaliderProspects();
 
-  return { success: "Prospect supprimé." };
+  return {
+    success: "Données personnelles effacées.",
+    autresFiches: resultat.autres_fiches,
+  };
 }
 
 /**
