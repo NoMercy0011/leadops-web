@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cheminApiSur } from "@/lib/chemin-api";
 import { getSessionToken } from "@/lib/session";
 import type { ValidationErrors } from "@/lib/types";
 
@@ -73,6 +74,13 @@ export async function apiFetch<T>(
     ...init
   }: ApiOptions = {},
 ): Promise<T> {
+  // Lot 9, faille F14 : un identifiant venu du navigateur ne doit pas pouvoir
+  // détourner l'appel vers une autre route (`/prospects/1/../../users`). Le
+  // refus part avant tout envoi, jeton compris.
+  if (!cheminApiSur(path)) {
+    throw new ApiError(400, "Requête invalide.");
+  }
+
   const token = anonymous ? null : await getSessionToken();
 
   const response = await fetch(`${BASE_URL}${path}`, {

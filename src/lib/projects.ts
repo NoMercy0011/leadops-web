@@ -162,10 +162,18 @@ export interface ProjectActivity {
   user?: User | null;
 }
 
+/**
+ * Journal du projet, paginé par 50 côté API (lot 9, contrat §5). Figé à 50
+ * lignes, l'historique au-delà était inaccessible.
+ */
 export async function listProjectActivities(
   projectId: number,
-): Promise<ProjectActivity[]> {
-  return apiFetch<ProjectActivity[]>(`/projects/${projectId}/activities`);
+  page = 1,
+): Promise<Paginated<ProjectActivity>> {
+  return apiFetch<Paginated<ProjectActivity>>(
+    `/projects/${projectId}/activities?page=${Math.max(1, Math.trunc(page))}`,
+    { unwrap: false },
+  );
 }
 
 /**

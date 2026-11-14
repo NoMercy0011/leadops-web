@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PipelineEditor } from "../pipeline-editor";
 import { ProjectJournal } from "../project-journal";
 import { QuestionnaireBuilder } from "../questionnaire-builder";
@@ -29,12 +30,16 @@ const AUCUN_UTILISATEUR = {
  * ou rendre une question obligatoire change le sens de ce qui a été saisi
  * avant. C'est pourquoi ils vivent ensemble, et à côté de leur journal.
  */
-export default async function BackOfficeDuProjetPage({
+export default async function ReglagesDuProjetPage({
   params,
+  searchParams,
 }: PageProps<"/projets/[id]/reglages">) {
   const user = await requireUser();
-  const { id } = await params;
+  const [{ id }, recherche] = await Promise.all([params, searchParams]);
   const projectId = Number(id);
+  // Page du journal (lot 9, contrat §5). Toute valeur douteuse retombe sur la
+  // première page plutôt que de produire une erreur.
+  const pageJournal = Math.max(1, Number.parseInt(String(recherche.journal ?? "1"), 10) || 1);
 
   const editable = user.role === "admin_client";
   const encadrement = editable || user.role === "manager";
@@ -44,7 +49,7 @@ export default async function BackOfficeDuProjetPage({
     listQuestions(projectId),
     // Les candidats ne servent qu'à qui peut modifier l'équipe.
     editable ? listCompanyUsers() : Promise.resolve(AUCUN_UTILISATEUR),
-    encadrement ? listProjectActivities(projectId) : Promise.resolve([]),
+    encadrement ? listProjectActivities(projectId, pageJournal) : Promise.resolve(null),
   ]);
 
   return (
@@ -128,9 +133,40 @@ export default async function BackOfficeDuProjetPage({
             </CardHeader>
             <CardContent>
               <ProjectJournal
-                activites={journal}
+                activites={journal?.data ?? []}
                 fuseau={user.company?.timezone}
               />
+              {journal && journal.meta.last_page > 1 ? (
+                <nav
+                  aria-label="Pages du journal"
+                  className="text-muted-foreground mt-4 flex items-center justify-between gap-4 text-sm"
+                >
+                  {journal.meta.current_page > 1 ? (
+                    <Link
+                      href={`/projets/${projectId}/reglages?journal=${journal.meta.current_page - 1}`}
+                      className="hover:text-foreground underline"
+                    >
+                      Plus récents
+                    </Link>
+                  ) : (
+                    <span />
+                  )}
+                  <span>
+                    Page {journal.meta.current_page} sur {journal.meta.last_page} ·{" "}
+                    {journal.meta.total} événements
+                  </span>
+                  {journal.meta.current_page < journal.meta.last_page ? (
+                    <Link
+                      href={`/projets/${projectId}/reglages?journal=${journal.meta.current_page + 1}`}
+                      className="hover:text-foreground underline"
+                    >
+                      Plus anciens
+                    </Link>
+                  ) : (
+                    <span />
+                  )}
+                </nav>
+              ) : null}
             </CardContent>
           </Card>
         ) : null}
