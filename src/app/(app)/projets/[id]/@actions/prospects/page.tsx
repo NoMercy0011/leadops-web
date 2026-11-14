@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Archive, Columns3 } from "lucide-react";
 
 import { CreateProspectDialog } from "@/app/(app)/prospects/create-prospect-dialog";
+import { ImportDialog } from "@/app/(app)/prospects/import-dialog";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/dal";
 import { getProject, listCompanyUsers } from "@/lib/projects";
@@ -43,8 +44,21 @@ export default async function ActionsProspects({
   const base = `/projets/${projectId}/prospects`;
   const archives = filtres.archived === "1";
 
+  // L'export reprend la vue affichée : les archivés quand on les regarde
+  // (lot 9, faille F17). Le relais transmet le paramètre à l'API.
+  const exporter = new URLSearchParams({ project_id: String(projectId) });
+  if (archives) exporter.set("archived", "1");
+
   return (
     <>
+      {/* L'import rejoint les actions de l'onglet Prospects (planche du lot 9,
+          S-01) : il n'avait rien à faire sur les autres onglets. Il n'est
+          proposé que si le projet accepte des prospects — l'API le refuse sur
+          un projet suspendu, terminé ou archivé. */}
+      {encadrement && projet.accepts_new_prospects ? (
+        <ImportDialog projet={projet} taille="sm" />
+      ) : null}
+
       <Button asChild variant="outline" size="sm">
         <Link href={`/prospects/kanban?project_id=${projectId}`}>
           <Columns3 className="size-4" aria-hidden />
@@ -55,12 +69,15 @@ export default async function ActionsProspects({
       <Button asChild variant={archives ? "secondary" : "outline"} size="sm">
         <Link href={archives ? base : `${base}?archived=1`}>
           <Archive className="size-4" aria-hidden />
-          {archives ? "Actifs" : "Archivés"}
+          {/* « Voir les archivés » et non « Archivés » : sur la même rangée
+              qu'« Archiver », le seul participe se lisait comme une action
+              (décision P4). */}
+          {archives ? "Voir les actifs" : "Voir les archivés"}
         </Link>
       </Button>
 
       <Button asChild variant="outline" size="sm">
-        <a href={`/api/prospects/export?project_id=${projectId}`}>Exporter</a>
+        <a href={`/api/prospects/export?${exporter.toString()}`}>Exporter</a>
       </Button>
 
       {/* Un projet fermé refuse les créations côté API : offrir le bouton

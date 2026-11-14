@@ -31,6 +31,9 @@ export interface ActionState {
  */
 function revaliderProspects(): void {
   revalidatePath(BASE_PATH, "layout");
+  // Lot 9 : les mêmes prospects se lisent aussi dans l'onglet Prospects et le
+  // tableau de bord de la fiche projet.
+  revalidatePath("/projets/[id]", "layout");
 }
 
 function toState(error: unknown): ActionState {

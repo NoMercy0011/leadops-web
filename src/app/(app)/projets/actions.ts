@@ -200,7 +200,10 @@ export async function addStage(
     return toState(error);
   }
 
-  revalidatePath(`${BASE_PATH}/${projectId}`);
+  // Tous les onglets de la fiche (lot 9) : un chemin littéral ne
+  // rafraîchit qu'une page, et les commandes partent désormais de
+  // /projets/[id]/reglages et /projets/[id]/prospects.
+  revalidatePath("/projets/[id]", "layout");
 
   return { success: `Étape « ${nom} » ajoutée.` };
 }
@@ -220,7 +223,10 @@ export async function reorderStages(
     return toState(error);
   }
 
-  revalidatePath(`${BASE_PATH}/${projectId}`);
+  // Tous les onglets de la fiche (lot 9) : un chemin littéral ne
+  // rafraîchit qu'une page, et les commandes partent désormais de
+  // /projets/[id]/reglages et /projets/[id]/prospects.
+  revalidatePath("/projets/[id]", "layout");
 
   return { success: "Pipeline réordonné." };
 }
@@ -235,7 +241,10 @@ export async function deleteStage(
     return toState(error);
   }
 
-  revalidatePath(`${BASE_PATH}/${projectId}`);
+  // Tous les onglets de la fiche (lot 9) : un chemin littéral ne
+  // rafraîchit qu'une page, et les commandes partent désormais de
+  // /projets/[id]/reglages et /projets/[id]/prospects.
+  revalidatePath("/projets/[id]", "layout");
 
   return { success: "Étape supprimée." };
 }
@@ -255,7 +264,10 @@ export async function syncMembers(
     return toState(error);
   }
 
-  revalidatePath(`${BASE_PATH}/${projectId}`);
+  // Tous les onglets de la fiche (lot 9) : un chemin littéral ne
+  // rafraîchit qu'une page, et les commandes partent désormais de
+  // /projets/[id]/reglages et /projets/[id]/prospects.
+  revalidatePath("/projets/[id]", "layout");
 
   return { success: "Équipe mise à jour." };
 }

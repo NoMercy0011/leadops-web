@@ -25,6 +25,7 @@ import {
   getProject,
   getVariantComparison,
 } from "@/lib/projects";
+import { cleJour } from "@/lib/format";
 import { listProspects } from "@/lib/prospects";
 import { getReport } from "@/lib/reporting";
 
@@ -51,7 +52,12 @@ export default async function TableauDeBordProjetPage({
   // Sans date de création connue, on laisse l'API retenir sa fenêtre par
   // défaut — trente jours — et le libellé le dit, plutôt que d'annoncer une
   // période que les chiffres ne couvrent pas.
-  const depuis = projet.created_at?.slice(0, 10);
+  // La journée locale de l'entreprise, pas la date UTC : sur un fuseau
+  // négatif, la date UTC tombait le lendemain et le premier soir du projet
+  // sortait de la période (point vert du lot 9).
+  const depuis = projet.created_at
+    ? cleJour(projet.created_at, { timeZone: user.company?.timezone })
+    : undefined;
   const periode = depuis
     ? "depuis la création du projet"
     : "sur les trente derniers jours";
@@ -59,14 +65,24 @@ export default async function TableauDeBordProjetPage({
   // La santé du pipeline, la comparaison et l'audit sont réservés à
   // l'encadrement côté API : les demander pour un commercial produirait un 403
   // à chaque visite.
-  const [rapport, prospects, sante, comparaison, qualite] = await Promise.all([
-    getReport({ project_id: projectId, from: depuis }),
-    // `per_page: 1` : seul le résumé agrégé est utilisé ici, la liste est
-    // l'affaire de l'onglet Prospects.
-    listProspects({ project_id: projectId, per_page: 1 }),
-    encadrement ? getPipelineHealth(projectId) : Promise.resolve(null),
-    encadrement ? getVariantComparison(projectId) : Promise.resolve(null),
-    encadrement ? getDataQuality(projectId) : Promise.resolve(null),
+  //
+  // Deux familles de requêtes (lot 9, faille F16). Les chiffres principaux
+  // sont indispensables : s'ils manquent, l'écran entier tombe sur sa
+  // frontière d'erreur. Les panneaux d'analyse, eux, échouent chacun dans sa
+  // carte — un `Promise.all` faisait tomber toute la fiche, en-tête et onglets
+  // compris, pour un seul panneau indisponible.
+  const [[rapport, prospects], [sante, comparaison, qualite]] = await Promise.all([
+    Promise.all([
+      getReport({ project_id: projectId, from: depuis }),
+      // `per_page: 1` : seul le résumé agrégé est utilisé ici, la liste est
+      // l'affaire de l'onglet Prospects.
+      listProspects({ project_id: projectId, per_page: 1 }),
+    ]),
+    Promise.allSettled([
+      encadrement ? getPipelineHealth(projectId) : Promise.resolve(null),
+      encadrement ? getVariantComparison(projectId) : Promise.resolve(null),
+      encadrement ? getDataQuality(projectId) : Promise.resolve(null),
+    ]),
   ]);
 
   const totaux = rapport.totals;
@@ -150,7 +166,9 @@ export default async function TableauDeBordProjetPage({
         />
       </div>
 
-      {sante ? (
+      {sante.status === "rejected" ? (
+        <PanneauIndisponible titre="Santé du pipeline" />
+      ) : sante.value ? (
         <Card>
           <CardHeader>
             <CardTitle>Santé du pipeline</CardTitle>
@@ -161,14 +179,16 @@ export default async function TableauDeBordProjetPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <PipelineHealthPanel sante={sante} />
+            <PipelineHealthPanel sante={sante.value} />
           </CardContent>
         </Card>
       ) : null}
 
-      {comparaison || qualite ? (
+      {encadrement ? (
         <div className="grid gap-6 lg:grid-cols-2">
-          {comparaison ? (
+          {comparaison.status === "rejected" ? (
+            <PanneauIndisponible titre="Face aux autres offres" />
+          ) : comparaison.value ? (
             <Card>
               <CardHeader>
                 <CardTitle>Face aux autres offres</CardTitle>
@@ -178,12 +198,14 @@ export default async function TableauDeBordProjetPage({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <VariantComparisonPanel comparaison={comparaison} />
+                <VariantComparisonPanel comparaison={comparaison.value} />
               </CardContent>
             </Card>
           ) : null}
 
-          {qualite ? (
+          {qualite.status === "rejected" ? (
+            <PanneauIndisponible titre="Qualité des données" />
+          ) : qualite.value ? (
             <Card>
               <CardHeader>
                 <CardTitle>Qualité des données</CardTitle>
@@ -193,12 +215,32 @@ export default async function TableauDeBordProjetPage({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <DataQualityPanel qualite={qualite} />
+                <DataQualityPanel qualite={qualite.value} />
               </CardContent>
             </Card>
           ) : null}
         </div>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Carte d'un panneau d'analyse qui n'a pas pu se charger (lot 9, faille F16).
+ * Le reste du tableau de bord reste lisible : seule cette carte le dit.
+ */
+function PanneauIndisponible({ titre }: { titre: string }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{titre}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p role="status" className="text-muted-foreground text-sm">
+          Ce panneau n&apos;a pas pu se charger. Le reste du tableau de bord
+          est à jour ; rechargez la page dans un instant pour le retrouver.
+        </p>
+      </CardContent>
+    </Card>
   );
 }

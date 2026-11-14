@@ -31,7 +31,7 @@ const AUCUN_UTILISATEUR = {
  */
 export default async function BackOfficeDuProjetPage({
   params,
-}: PageProps<"/projets/[id]/back-office">) {
+}: PageProps<"/projets/[id]/reglages">) {
   const user = await requireUser();
   const { id } = await params;
   const projectId = Number(id);

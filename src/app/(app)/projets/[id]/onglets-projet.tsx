@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CalendarDays,
-  CreditCard,
   LayoutDashboard,
   Settings2,
   Users,
@@ -28,14 +27,18 @@ interface Onglet {
  * serveur à un composant client — rien ne saurait la sérialiser. Le layout
  * échouait donc à chaque rendu, et la page entière tombait sur sa frontière
  * d'erreur. Le serveur ne transmet plus que des données : l'identifiant du
- * projet, et l'affichage ou non de l'onglet Abonnement.
+ * projet.
+ *
+ * Lot 9 : l'onglet « Back office » devient « Réglages » (décision P1) —
+ * « back-office » désigne, dans l'esquisse, l'espace du Super Admin. L'onglet
+ * Abonnement quitte la fiche pour Paramètres (décision P2) : tous les rôles
+ * voient désormais les mêmes onglets.
  */
 const ONGLETS: Onglet[] = [
   { libelle: "Tableau de bord", suffixe: "", icone: LayoutDashboard },
   { libelle: "Prospects", suffixe: "/prospects", icone: Users },
   { libelle: "Rendez-vous", suffixe: "/rendez-vous", icone: CalendarDays },
-  { libelle: "Abonnement", suffixe: "/abonnement", icone: CreditCard },
-  { libelle: "Back office", suffixe: "/back-office", icone: Settings2 },
+  { libelle: "Réglages", suffixe: "/reglages", icone: Settings2 },
 ];
 
 /**
@@ -54,23 +57,9 @@ const ONGLETS: Onglet[] = [
  * répéter des nombres que le tableau de bord donne en grand. Une barre de
  * navigation indique où aller, pas ce qui s'y trouve.
  */
-export function OngletsProjet({
-  projectId,
-  avecAbonnement,
-}: {
-  projectId: number;
-  /**
-   * L'API réserve la lecture de l'abonnement à l'Admin Client : proposer
-   * l'onglet aux autres rôles mènerait à une page 404 annoncée.
-   */
-  avecAbonnement: boolean;
-}) {
+export function OngletsProjet({ projectId }: { projectId: number }) {
   const chemin = usePathname();
   const base = `/projets/${projectId}`;
-
-  const visibles = ONGLETS.filter(
-    (onglet) => avecAbonnement || onglet.suffixe !== "/abonnement",
-  );
 
   return (
     // Le filet appartient à la bande d'en-tête, pas à la navigation : les deux
@@ -79,7 +68,7 @@ export function OngletsProjet({
       {/* `-mb-px` fait mordre le soulignement de l'onglet actif sur le filet de
           la bande, au lieu de flotter un pixel au-dessus. */}
       <ul className="-mb-px flex gap-1 overflow-x-auto">
-        {visibles.map((onglet) => {
+        {ONGLETS.map((onglet) => {
           const href = `${base}${onglet.suffixe}`;
 
           // Le tableau de bord est le seul segment sans suffixe : un

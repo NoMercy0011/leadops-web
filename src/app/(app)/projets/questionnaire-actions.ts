@@ -74,7 +74,10 @@ export async function addQuestion(
     return toState(error);
   }
 
-  revalidatePath(`/projets/${projectId}`);
+  // Tous les onglets de la fiche (lot 9) : un chemin littéral ne
+  // rafraîchit qu'une page, et les commandes partent désormais de
+  // /projets/[id]/reglages et /projets/[id]/prospects.
+  revalidatePath("/projets/[id]", "layout");
 
   return { success: `Question « ${label} » ajoutée.` };
 }
@@ -124,7 +127,10 @@ export async function updateQuestion(
     return toState(error);
   }
 
-  revalidatePath(`/projets/${projectId}`);
+  // Tous les onglets de la fiche (lot 9) : un chemin littéral ne
+  // rafraîchit qu'une page, et les commandes partent désormais de
+  // /projets/[id]/reglages et /projets/[id]/prospects.
+  revalidatePath("/projets/[id]", "layout");
 
   return { success: `Question « ${label} » mise à jour.` };
 }
@@ -142,7 +148,10 @@ export async function reorderQuestions(
     return toState(error);
   }
 
-  revalidatePath(`/projets/${projectId}`);
+  // Tous les onglets de la fiche (lot 9) : un chemin littéral ne
+  // rafraîchit qu'une page, et les commandes partent désormais de
+  // /projets/[id]/reglages et /projets/[id]/prospects.
+  revalidatePath("/projets/[id]", "layout");
 
   return { success: "Questionnaire réordonné." };
 }
@@ -159,7 +168,10 @@ export async function deleteQuestion(
     return toState(error);
   }
 
-  revalidatePath(`/projets/${projectId}`);
+  // Tous les onglets de la fiche (lot 9) : un chemin littéral ne
+  // rafraîchit qu'une page, et les commandes partent désormais de
+  // /projets/[id]/reglages et /projets/[id]/prospects.
+  revalidatePath("/projets/[id]", "layout");
 
   return { success: "Question retirée du formulaire." };
 }

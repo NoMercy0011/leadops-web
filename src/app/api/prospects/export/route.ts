@@ -23,8 +23,15 @@ export async function GET(request: NextRequest) {
   }
 
   const base = process.env.API_BASE_URL ?? "http://localhost:8000/api/v1";
-  const projectId = request.nextUrl.searchParams.get("project_id");
-  const suffixe = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+  // Les mêmes filtres que la liste (lot 9, faille F17 ; contrat §10) : l'API
+  // filtre l'export comme elle filtre la liste. Seuls ces paramètres passent —
+  // le relais ne transmet rien d'autre que ce que le contrat connaît.
+  const transmis = new URLSearchParams();
+  for (const cle of ["project_id", "archived", "stage_id", "assigned_user_id", "search"]) {
+    const valeur = request.nextUrl.searchParams.get(cle);
+    if (valeur !== null && valeur !== "") transmis.set(cle, valeur);
+  }
+  const suffixe = transmis.size > 0 ? `?${transmis.toString()}` : "";
 
   const reponse = await fetch(`${base}/prospects/export${suffixe}`, {
     headers: { Authorization: `Bearer ${token}`, Accept: "text/csv" },

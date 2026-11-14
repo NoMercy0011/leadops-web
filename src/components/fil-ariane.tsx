@@ -45,6 +45,10 @@ const LIBELLES: Record<string, string> = {
   plans: "Plans",
   variantes: "Variantes",
   kanban: "Kanban",
+  // Lot 9 : sections de la fiche projet et page d'abonnement de l'entreprise.
+  reglages: "Réglages",
+  "rendez-vous": "Rendez-vous",
+  abonnement: "Abonnement",
 };
 
 /**

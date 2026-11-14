@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 
 import { OngletsProjet } from "./onglets-projet";
 import { EditProjectDialog, ProjectStatusActions } from "./project-actions";
-import { ImportDialog } from "@/app/(app)/prospects/import-dialog";
 import { LibelleFilAriane } from "@/components/fil-ariane";
 import { Notice } from "@/components/notice";
 import { StatusBadge, type Tone } from "@/components/status-badge";
@@ -83,7 +82,6 @@ export default async function LayoutFicheProjet({
   const projet = await chargerProjet(id);
 
   const editable = user.role === "admin_client";
-  const encadrement = user.role === "admin_client" || user.role === "manager";
 
   // Les variantes ne servent qu'au dialogue de modification : les charger pour
   // qui ne peut pas modifier serait une requête pour rien.
@@ -148,13 +146,6 @@ export default async function LayoutFicheProjet({
               L'action principale de la section ferme la marche, comme sur les
               autres écrans du produit. */}
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-            {/* L'import n'est proposé que si le projet accepte des prospects :
-                l'API le refuse sur un projet suspendu, terminé ou archivé, et
-                offrir le bouton mènerait à un échec annoncé. */}
-            {encadrement && projet.accepts_new_prospects ? (
-              <ImportDialog projet={projet} taille="sm" />
-            ) : null}
-
             {/* Modifier et changer d'état sont réservés à l'Admin Client par
                 la policy. Le front masque, l'API tranche. */}
             {editable ? (
@@ -167,11 +158,11 @@ export default async function LayoutFicheProjet({
             {actions}
           </div>
 
-          {/* Le plan et les plafonds sont une affaire de gestion : l'API en
-              réserve la lecture à l'Admin Client, l'onglet ne lui est donc
-              proposé qu'à lui. Seules des données franchissent la frontière —
-              une icône est une fonction, que rien ne saurait sérialiser. */}
-          <OngletsProjet projectId={projet.id} avecAbonnement={editable} />
+          {/* Les mêmes onglets pour tous les rôles (lot 9, décision P2 :
+              l'abonnement vit dans Paramètres). Seules des données
+              franchissent la frontière — une icône est une fonction, que rien
+              ne saurait sérialiser. */}
+          <OngletsProjet projectId={projet.id} />
         </div>
       </header>
 

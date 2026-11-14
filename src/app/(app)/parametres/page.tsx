@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, ClipboardList, Layers, Users } from "lucide-react";
+import { ChevronRight, CreditCard, Layers, Users } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +18,16 @@ export const metadata: Metadata = {
  */
 const SECTIONS = [
   {
+    // Lot 9, décision P2 : l'abonnement est celui de l'entreprise, il quitte
+    // la fiche projet pour vivre ici.
+    href: "/parametres/abonnement",
+    label: "Abonnement",
+    description:
+      "Votre plan, son échéance et la consommation de l'entreprise, tous projets confondus.",
+    icon: CreditCard,
+    disponible: true,
+  },
+  {
     href: "/parametres/variantes",
     label: "Variantes",
     description:
@@ -32,14 +42,9 @@ const SECTIONS = [
     icon: Users,
     disponible: false,
   },
-  {
-    href: "/parametres/questionnaires",
-    label: "Questionnaires",
-    description:
-      "Questions de qualification, configurables sans déploiement (lot 5).",
-    icon: ClipboardList,
-    disponible: false,
-  },
+  // La carte « Questionnaires — bientôt » est retirée (planche du lot 9) :
+  // les questionnaires se règlent dans l'onglet Réglages de chaque projet, et
+  // l'annoncer ici à venir laissait chercher un écran qui n'existera pas.
 ];
 
 export default async function ParametresPage() {
