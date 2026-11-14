@@ -5,6 +5,7 @@ import {
   AppointmentStatusBadge,
   AppointmentTypeIcon,
 } from "@/components/appointment-badge";
+import { StatusBadge } from "@/components/status-badge";
 import { formatDateCourte, formatHeure } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Appointment } from "@/lib/types";
@@ -88,6 +89,12 @@ export function PanneauAgenda({
                       >
                         {rdv.prospect?.full_name ?? "Prospect inconnu"}
                       </span>
+                      {/* Lot 9, décision P8 : l'archivage range le prospect,
+                          il ne cache pas ses rendez-vous. La mention dit
+                          pourquoi celui-ci ne compte dans aucun total. */}
+                      {rdv.prospect?.is_archived ? (
+                        <StatusBadge tone="neutral">Archivé</StatusBadge>
+                      ) : null}
                     </span>
 
                     <span className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">

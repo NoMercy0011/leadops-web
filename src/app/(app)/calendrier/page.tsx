@@ -174,12 +174,25 @@ export default async function CalendrierPage({
 
   const affiches = rendezVous.filter(dansLEtendue);
 
-  const resume = resumeAgenda(rendezVous, { fuseau, ceJour });
+  // Les compteurs portent sur la période affichée (lot 9, faille F18) : ils
+  // étaient calculés sur le mois chargé, ±7 jours, quand le panneau montrait
+  // un seul jour, et rien ne le disait. Comme les tuiles du tableau de bord,
+  // ils ignorent les rendez-vous des prospects archivés (règle R5) ; le
+  // panneau, lui, les montre, marqués « Archivé ».
+  const resume = resumeAgenda(
+    affiches.filter((rdv) => !rdv.prospect?.is_archived),
+    { fuseau, ceJour },
+  );
+  const periodeContientAujourdhui = ceJour >= debut && ceJour <= fin;
   const [annee, mois] = ancre.split("-").map(Number);
 
   const COMPTEURS = [
     { libelle: "À clôturer", valeur: resume.aCloturer, alerte: true },
-    { libelle: "Aujourd’hui", valeur: resume.aujourdhui, alerte: false },
+    // Masqué quand la période affichée ne contient pas aujourd'hui : un
+    // zéro y serait vrai et trompeur (question ouverte de la planche).
+    ...(periodeContientAujourdhui
+      ? [{ libelle: "Aujourd’hui", valeur: resume.aujourdhui, alerte: false }]
+      : []),
     { libelle: "À venir", valeur: resume.aVenir, alerte: false },
     { libelle: "Réalisés", valeur: resume.realises, alerte: false },
     { libelle: "Absents", valeur: resume.absents, alerte: false },
