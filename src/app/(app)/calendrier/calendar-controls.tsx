@@ -70,6 +70,8 @@ export function CalendarControls({
   projets,
   utilisateurs,
   parametres,
+  base = "/calendrier",
+  projetFixe = false,
 }: {
   vue: Vue;
   ancre: string;
@@ -79,8 +81,11 @@ export function CalendarControls({
   projets: Project[];
   utilisateurs: User[];
   parametres: URLSearchParams;
+  /** Adresse de l'écran : le Calendrier, ou l'onglet Rendez-vous d'un projet (lot 9, P6). */
+  base?: string;
+  /** Onglet Rendez-vous d'un projet : le projet est fixé, son filtre disparaît. */
+  projetFixe?: boolean;
 }) {
-  const base = "/calendrier";
 
   const versDate = (date: string | null) => {
     const suivants = new URLSearchParams(parametres);
@@ -115,9 +120,13 @@ export function CalendarControls({
     "Tous";
 
   const resume = [
-    parametres.get("project_id")
-      ? nomActif(optionsProjet, "project_id")
-      : "tous les projets",
+    ...(projetFixe
+      ? []
+      : [
+          parametres.get("project_id")
+            ? nomActif(optionsProjet, "project_id")
+            : "tous les projets",
+        ]),
     parametres.get("user_id")
       ? nomActif(optionsCommercial, "user_id")
       : "tous les commerciaux",
@@ -126,7 +135,7 @@ export function CalendarControls({
       : "tous les statuts",
   ];
 
-  const filtre = ["project_id", "user_id", "status"].some((cle) =>
+  const filtre = [...(projetFixe ? [] : ["project_id"]), "user_id", "status"].some((cle) =>
     parametres.get(cle),
   );
 
@@ -192,14 +201,16 @@ export function CalendarControls({
         </summary>
 
         <div className="flex flex-col gap-2 px-3 pt-1 pb-3">
-          <FamilleFiltre
-            libelle="Projet"
-            parametre="project_id"
-            options={optionsProjet}
-            valeurActive={parametres.get("project_id") ?? ""}
-            base={base}
-            parametres={parametres}
-          />
+          {projetFixe ? null : (
+            <FamilleFiltre
+              libelle="Projet"
+              parametre="project_id"
+              options={optionsProjet}
+              valeurActive={parametres.get("project_id") ?? ""}
+              base={base}
+              parametres={parametres}
+            />
+          )}
 
           {utilisateurs.length > 0 ? (
             <FamilleFiltre
