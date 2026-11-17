@@ -1,6 +1,6 @@
 import "server-only";
 
-import { apiFetch } from "@/lib/api";
+import { apiFetch, idApi } from "@/lib/api";
 import type { Company, Plan } from "@/lib/types";
 
 /**
@@ -46,11 +46,11 @@ export async function listCompanies(
 }
 
 export async function getCompany(id: number): Promise<Company> {
-  return apiFetch<Company>(`/admin/companies/${id}`);
+  return apiFetch<Company>(`/admin/companies/${idApi(id)}`);
 }
 
 export async function getCompanyUsage(id: number): Promise<CompanyUsage> {
-  return apiFetch<CompanyUsage>(`/admin/companies/${id}/usage`);
+  return apiFetch<CompanyUsage>(`/admin/companies/${idApi(id)}/usage`);
 }
 
 export async function listPlans(): Promise<Plan[]> {

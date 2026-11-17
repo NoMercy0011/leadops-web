@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { ApiError, apiFetch } from "@/lib/api";
+import { ApiError, apiFetch, idApi } from "@/lib/api";
 import type { ProjectStatus, StageColor } from "@/lib/types";
 
 const BASE_PATH = "/projets";
@@ -122,7 +122,7 @@ export async function updateProject(
   }
 
   try {
-    await apiFetch(`/projects/${projectId}`, {
+    await apiFetch(`/projects/${idApi(projectId)}`, {
       method: "PATCH",
       // Les champs vidés partent à `null` et non omis : sans cela, effacer une
       // description ne l'effacerait jamais, la règle `sometimes` de Laravel
@@ -158,7 +158,7 @@ export async function changeProjectStatus(
   statut: ProjectStatus,
 ): Promise<ActionState> {
   try {
-    await apiFetch(`/projects/${projectId}`, {
+    await apiFetch(`/projects/${idApi(projectId)}`, {
       method: "PATCH",
       body: { status: statut },
     });
@@ -189,7 +189,7 @@ export async function addStage(
   }
 
   try {
-    await apiFetch(`/projects/${projectId}/stages`, {
+    await apiFetch(`/projects/${idApi(projectId)}/stages`, {
       method: "POST",
       body: {
         name: nom,
@@ -215,7 +215,7 @@ export async function reorderStages(
   try {
     // L'API exige une permutation exacte : un sous-ensemble laisserait des
     // étapes sur une position obsolète, donc un ordre d'affichage faux.
-    await apiFetch(`/projects/${projectId}/stages/reorder`, {
+    await apiFetch(`/projects/${idApi(projectId)}/stages/reorder`, {
       method: "PATCH",
       body: { stages: stageIds },
     });
@@ -236,7 +236,7 @@ export async function deleteStage(
   stageId: number,
 ): Promise<ActionState> {
   try {
-    await apiFetch(`/stages/${stageId}`, { method: "DELETE" });
+    await apiFetch(`/stages/${idApi(stageId)}`, { method: "DELETE" });
   } catch (error) {
     return toState(error);
   }
@@ -256,7 +256,7 @@ export async function syncMembers(
   try {
     // Remplacement complet et non ajout : l'écran présente une liste à cocher,
     // et `sync` traduit exactement ce que l'utilisateur voit.
-    await apiFetch(`/projects/${projectId}/members`, {
+    await apiFetch(`/projects/${idApi(projectId)}/members`, {
       method: "PUT",
       body: { member_ids: memberIds },
     });
@@ -304,7 +304,7 @@ export async function deleteVariant(variantId: number): Promise<ActionState> {
     // L'API refuse la suppression d'une variante encore utilisée : la laisser
     // passer détacherait silencieusement les projets et ferait disparaître un
     // axe de reporting.
-    await apiFetch(`/variants/${variantId}`, { method: "DELETE" });
+    await apiFetch(`/variants/${idApi(variantId)}`, { method: "DELETE" });
   } catch (error) {
     return toState(error);
   }

@@ -30,3 +30,13 @@ export function cheminApiSur(path: string): boolean {
     .split("/")
     .every((segment) => SEGMENT.test(segment));
 }
+
+/**
+ * Identifiant acceptable dans un chemin d'API : un entier strictement positif,
+ * et rien d'autre (revue du lot 9). `cheminApiSur` laisse passer `5?`, qui
+ * détourne l'appel vers une autre route de même rang : la règle se pose donc
+ * sur chaque identifiant, avant qu'il n'entre dans le chemin.
+ */
+export function estIdentifiantApi(valeur: unknown): valeur is number {
+  return typeof valeur === "number" && Number.isInteger(valeur) && valeur > 0;
+}

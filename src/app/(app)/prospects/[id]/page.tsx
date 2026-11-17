@@ -113,7 +113,8 @@ export default async function FicheProspectPage({
           </>
         }
         actions={
-          efface ? (
+          <>
+          {efface ? (
             <StatusBadge tone="neutral">
               Effacé le {formatDate(prospect.erased_at, { timeZone: fuseau })}
             </StatusBadge>
@@ -135,17 +136,26 @@ export default async function FicheProspectPage({
                 statistiques ne doit pas revenir à celui qu'elles mesurent.
                 Désarchiver reste possible : c'est le geste qui lève la
                 lecture seule. */}
-            {encadrement ? <ArchiveProspectButton prospect={prospect} /> : null}
-
-            {/* La policy réserve l'effacement à l'Admin Client. Le bouton
-                n'est masqué que par confort de lecture : c'est l'API qui
-                tranche, et elle refuserait l'appel de toute façon. Il reste
-                proposé sur un prospect archivé (contrat §8). */}
-            {user.role === "admin_client" ? (
-              <EraseProspectButton prospect={prospect} />
+            {/* Un prospect d'un projet archivé ne s'archive ni ne se
+                désarchive : seul le projet se réactive (décision R2). */}
+            {encadrement ? (
+              <ArchiveProspectButton prospect={prospect} lectureSeule={projetArchive} />
             ) : null}
           </>
-          )
+          )}
+
+          {/* L'effacement vit hors de la branche conditionnelle, à une place
+              fixe de l'arbre (revue du lot 9) : la fiche se recharge en
+              « Prospect effacé » dès l'effacement, et le bouton, démonté avec
+              la branche, emportait la boîte de résultat et la liste des
+              autres fiches, que l'API ne renvoie qu'une fois. Le composant se
+              masque lui-même sur une fiche effacée, sauf boîte ouverte.
+              La policy réserve l'effacement à l'Admin Client ; il reste
+              proposé sur un prospect archivé (contrat §8). */}
+          {user.role === "admin_client" ? (
+            <EraseProspectButton prospect={prospect} />
+          ) : null}
+          </>
         }
       />
 

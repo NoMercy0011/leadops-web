@@ -2,7 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 
-import { apiFetch } from "@/lib/api";
+import { apiFetch, idApi } from "@/lib/api";
 import type { Paginated } from "@/lib/admin";
 import type { PerformanceRow } from "@/lib/reporting";
 import type {
@@ -48,11 +48,11 @@ export async function listProjects(
  * frontière entre deux requêtes.
  */
 export const getProject = cache(async (id: number): Promise<Project> => {
-  return apiFetch<Project>(`/projects/${id}`);
+  return apiFetch<Project>(`/projects/${idApi(id)}`);
 });
 
 export async function listStages(projectId: number): Promise<PipelineStage[]> {
-  return apiFetch<PipelineStage[]>(`/projects/${projectId}/stages`);
+  return apiFetch<PipelineStage[]>(`/projects/${idApi(projectId)}/stages`);
 }
 
 export async function listVariants(): Promise<Variant[]> {
@@ -106,7 +106,7 @@ export interface PipelineHealth {
 export async function getPipelineHealth(
   projectId: number,
 ): Promise<PipelineHealth> {
-  return apiFetch<PipelineHealth>(`/projects/${projectId}/pipeline-health`);
+  return apiFetch<PipelineHealth>(`/projects/${idApi(projectId)}/pipeline-health`);
 }
 
 /**
@@ -140,7 +140,7 @@ export interface DataQuality {
 }
 
 export async function getDataQuality(projectId: number): Promise<DataQuality> {
-  return apiFetch<DataQuality>(`/projects/${projectId}/data-quality`);
+  return apiFetch<DataQuality>(`/projects/${idApi(projectId)}/data-quality`);
 }
 
 /**
@@ -199,6 +199,6 @@ export async function getVariantComparison(
   projectId: number,
 ): Promise<VariantComparison> {
   return apiFetch<VariantComparison>(
-    `/projects/${projectId}/variant-comparison`,
+    `/projects/${idApi(projectId)}/variant-comparison`,
   );
 }

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { apiFetch } from "@/lib/api";
+import { apiFetch, idApi } from "@/lib/api";
 import type { Question, Questionnaire } from "@/lib/types";
 
 /**
@@ -14,10 +14,10 @@ import type { Question, Questionnaire } from "@/lib/types";
 export async function getQuestionnaire(
   prospectId: number,
 ): Promise<Questionnaire> {
-  return apiFetch<Questionnaire>(`/prospects/${prospectId}/questionnaire`);
+  return apiFetch<Questionnaire>(`/prospects/${idApi(prospectId)}/questionnaire`);
 }
 
 /** Définitions seules, pour le constructeur côté projet. */
 export async function listQuestions(projectId: number): Promise<Question[]> {
-  return apiFetch<Question[]>(`/projects/${projectId}/questions`);
+  return apiFetch<Question[]>(`/projects/${idApi(projectId)}/questions`);
 }

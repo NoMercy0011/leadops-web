@@ -1,6 +1,6 @@
 import "server-only";
 
-import { cheminApiSur } from "@/lib/chemin-api";
+import { cheminApiSur, estIdentifiantApi } from "@/lib/chemin-api";
 import { getSessionToken } from "@/lib/session";
 import type { ValidationErrors } from "@/lib/types";
 
@@ -54,6 +54,23 @@ interface ApiOptions extends Omit<RequestInit, "body"> {
    * pas découper.
    */
   rawBody?: boolean;
+}
+
+/**
+ * Identifiant à interpoler dans un chemin d'API — revue du lot 9, faille F14.
+ *
+ * Les Server Actions reçoivent leurs identifiants du navigateur, sans type à
+ * l'exécution. La garde de chemin d'`apiFetch` refuse `..`, mais pas `5?` :
+ * `/prospects/5?/archive` partait en `PATCH /prospects/5`, une autre route.
+ * Chaque identifiant passe donc par ici avant d'entrer dans un chemin : seul
+ * un entier strictement positif est accepté.
+ */
+export function idApi(valeur: unknown): string {
+  if (!estIdentifiantApi(valeur)) {
+    throw new ApiError(400, "Identifiant invalide.");
+  }
+
+  return String(valeur);
 }
 
 /**

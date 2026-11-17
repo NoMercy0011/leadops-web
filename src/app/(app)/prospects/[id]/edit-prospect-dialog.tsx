@@ -229,24 +229,39 @@ export function EditProspectDialog({
 export function ArchiveProspectButton({
   prospect,
   compact = false,
+  lectureSeule = false,
 }: {
   prospect: Prospect;
   /** Réduit au pictogramme, pour une cellule de tableau. */
   compact?: boolean;
+  /** Prospect d'un projet archivé : visible, désactivé (décisions P7 et R2). */
+  lectureSeule?: boolean;
 }) {
   const [pending, setPending] = useState(false);
   const [motif, setMotif] = useState("");
   const [open, setOpen] = useState(false);
+  const [erreurMotif, setErreurMotif] = useState<string | null>(null);
 
   async function basculer(archive: boolean) {
     setPending(true);
+    setErreurMotif(null);
     const resultat = await archiveProspect(prospect.id, archive, motif);
-
     setPending(false);
-    setOpen(false);
-    setMotif("");
 
-    if (resultat.success) toast.success(resultat.success);
+    // Une erreur sur le motif reste sous le champ, la boîte ouverte et la
+    // saisie conservée (revue du lot 9, F13) : la fermer effaçait le texte.
+    if (resultat.fieldErrors?.motif) {
+      setErreurMotif(resultat.fieldErrors.motif);
+      return;
+    }
+
+    if (resultat.success) {
+      setOpen(false);
+      setMotif("");
+      toast.success(resultat.success);
+      return;
+    }
+
     if (resultat.message) toast.error(resultat.message);
   }
 
@@ -258,7 +273,7 @@ export function ArchiveProspectButton({
       <Button
         variant={compact ? "ghost" : "outline"}
         size={compact ? "icon-sm" : "sm"}
-        disabled={pending}
+        disabled={pending || lectureSeule}
         aria-busy={pending}
         aria-label={compact ? `Désarchiver ${prospect.full_name}` : undefined}
         className={
@@ -283,7 +298,7 @@ export function ArchiveProspectButton({
           variant="ghost"
           size={compact ? "icon-sm" : "sm"}
           className="text-muted-foreground hover:text-foreground duration-(--duration-fast) ease-brand transition-colors"
-          disabled={pending}
+          disabled={pending || lectureSeule}
           aria-label={compact ? `Archiver ${prospect.full_name}` : undefined}
         >
           <Archive className="size-4" aria-hidden />
@@ -314,14 +329,23 @@ export function ArchiveProspectButton({
           <Textarea
             id="motif-archivage"
             rows={2}
+            maxLength={255}
             value={motif}
             onChange={(event) => setMotif(event.target.value)}
             placeholder="Injoignable depuis six mois."
+            aria-invalid={erreurMotif !== null}
+            aria-describedby="motif-archivage-aide"
           />
-          <p className="text-muted-foreground text-xs">
-            Conservé au journal du prospect : il aidera à décider si le dossier
-            ressort.
-          </p>
+          {erreurMotif ? (
+            <p id="motif-archivage-aide" role="alert" className="text-destructive-subtle-foreground text-xs">
+              {erreurMotif}
+            </p>
+          ) : (
+            <p id="motif-archivage-aide" className="text-muted-foreground text-xs">
+              Conservé au journal du prospect : il aidera à décider si le
+              dossier ressort.
+            </p>
+          )}
         </div>
 
         <AlertDialogFooter>
@@ -376,8 +400,9 @@ export function EraseProspectButton({ prospect }: { prospect: Prospect }) {
     setPending(false);
 
     if (reponse.success) {
+      // Pas de router.refresh() : l'action a déjà revalidé la fiche, qui se
+      // recharge sous la boîte ouverte.
       setResultat(reponse);
-      router.refresh();
       return;
     }
 
@@ -396,6 +421,13 @@ export function EraseProspectButton({ prospect }: { prospect: Prospect }) {
       setResultat(null);
       setErreur(null);
     }
+  }
+
+  // Une fiche effacée n'a plus d'action : le bouton disparaît, sauf pendant
+  // que la boîte de résultat est ouverte — elle porte la seule occasion de
+  // voir les autres fiches de la personne.
+  if (prospect.is_erased && !open) {
+    return null;
   }
 
   return (

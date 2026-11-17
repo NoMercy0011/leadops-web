@@ -1,6 +1,6 @@
 import "server-only";
 
-import { apiFetch } from "@/lib/api";
+import { apiFetch, idApi } from "@/lib/api";
 import type { Paginated } from "@/lib/admin";
 import type { Prospect, ProspectActivity, ProspectSummary } from "@/lib/types";
 
@@ -67,13 +67,13 @@ export async function listProspects(
 }
 
 export async function getProspect(id: number): Promise<Prospect> {
-  return apiFetch<Prospect>(`/prospects/${id}`);
+  return apiFetch<Prospect>(`/prospects/${idApi(id)}`);
 }
 
 export async function listActivities(
   prospectId: number,
 ): Promise<ProspectActivity[]> {
-  return apiFetch<ProspectActivity[]>(`/prospects/${prospectId}/activities`);
+  return apiFetch<ProspectActivity[]>(`/prospects/${idApi(prospectId)}/activities`);
 }
 
 /**

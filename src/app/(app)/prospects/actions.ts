@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { ApiError, apiFetch } from "@/lib/api";
+import { ApiError, apiFetch, idApi } from "@/lib/api";
 import type {
   AutreFiche,
   BulkAssignReport,
@@ -179,7 +179,7 @@ export async function updateProspect(
   }
 
   try {
-    await apiFetch(`/prospects/${prospectId}`, {
+    await apiFetch(`/prospects/${idApi(prospectId)}`, {
       method: "PATCH",
       // Les champs laissés vides sont envoyés à `null` et non omis : sans
       // cela, vider une adresse email dans le formulaire ne l'effacerait
@@ -223,7 +223,7 @@ export async function eraseProspect(prospectId: number): Promise<ActionState> {
   let resultat: ErasureResult;
 
   try {
-    resultat = await apiFetch<ErasureResult>(`/prospects/${prospectId}/erase`, {
+    resultat = await apiFetch<ErasureResult>(`/prospects/${idApi(prospectId)}/erase`, {
       method: "POST",
       unwrap: false,
     });
@@ -260,7 +260,7 @@ export async function archiveProspect(
   motif?: string,
 ): Promise<ActionState> {
   try {
-    await apiFetch(`/prospects/${prospectId}/archive`, {
+    await apiFetch(`/prospects/${idApi(prospectId)}/archive`, {
       method: "PATCH",
       body: { archived: archive, motif: motif?.trim() || null },
     });
@@ -282,7 +282,7 @@ export async function changeStage(
   stageId: number,
 ): Promise<ActionState> {
   try {
-    await apiFetch(`/prospects/${prospectId}/stage`, {
+    await apiFetch(`/prospects/${idApi(prospectId)}/stage`, {
       method: "PATCH",
       body: { stage_id: stageId },
     });
@@ -300,7 +300,7 @@ export async function assignProspect(
   userId: number | null,
 ): Promise<ActionState> {
   try {
-    await apiFetch(`/prospects/${prospectId}/assign`, {
+    await apiFetch(`/prospects/${idApi(prospectId)}/assign`, {
       method: "PATCH",
       body: { assigned_user_id: userId },
     });
@@ -361,7 +361,7 @@ export async function addNote(
   }
 
   try {
-    await apiFetch(`/prospects/${prospectId}/notes`, {
+    await apiFetch(`/prospects/${idApi(prospectId)}/notes`, {
       method: "POST",
       body: { note },
     });
@@ -382,7 +382,7 @@ export async function planNextAction(
   const note = String(formData.get("next_action_note") ?? "").trim();
 
   try {
-    await apiFetch(`/prospects/${prospectId}/next-action`, {
+    await apiFetch(`/prospects/${idApi(prospectId)}/next-action`, {
       method: "PATCH",
       body: {
         next_action_at: quand === "" ? null : quand,

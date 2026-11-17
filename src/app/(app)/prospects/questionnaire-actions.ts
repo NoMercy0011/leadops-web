@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { ApiError, apiFetch } from "@/lib/api";
+import { ApiError, apiFetch, idApi } from "@/lib/api";
 
 export interface QuestionnaireState {
   message?: string;
@@ -23,7 +23,7 @@ export async function saveAnswers(
   answers: Record<number, unknown>,
 ): Promise<QuestionnaireState> {
   try {
-    await apiFetch(`/prospects/${prospectId}/questionnaire`, {
+    await apiFetch(`/prospects/${idApi(prospectId)}/questionnaire`, {
       method: "PUT",
       body: { answers },
     });
