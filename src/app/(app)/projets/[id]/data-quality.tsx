@@ -69,7 +69,7 @@ function Ligne({
                   href={`/prospects/${prospect.id}`}
                   className="hover:text-foreground underline-offset-2 hover:underline"
                 >
-                  {prospect.name}
+                  {prospect.name || "Prospect effacé"}
                 </Link>
               </span>
             ))}

@@ -52,6 +52,10 @@ export default async function ReglagesDuProjetPage({
     encadrement ? listProjectActivities(projectId, pageJournal) : Promise.resolve(null),
   ]);
 
+  // Un projet archivé est en lecture seule (règle R3, décision P7) : les
+  // éditeurs s'affichent sans commande, l'API refuserait toute écriture.
+  const modifiable = editable && projet.status !== "archived";
+
   return (
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-3">
@@ -67,7 +71,7 @@ export default async function ReglagesDuProjetPage({
             <PipelineEditor
               projectId={projet.id}
               stages={projet.stages ?? []}
-              editable={editable}
+              editable={modifiable}
             />
           </CardContent>
         </Card>
@@ -80,7 +84,7 @@ export default async function ReglagesDuProjetPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {editable ? (
+            {modifiable ? (
               <TeamEditor
                 projectId={projet.id}
                 candidats={candidats.data}
@@ -115,7 +119,7 @@ export default async function ReglagesDuProjetPage({
           <QuestionnaireBuilder
             projectId={projet.id}
             questions={questions}
-            editable={editable}
+            editable={modifiable}
           />
         </CardContent>
       </Card>

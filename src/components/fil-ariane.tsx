@@ -111,8 +111,9 @@ export function FilArianeProvider({ children }: { children: React.ReactNode }) {
 /**
  * Donne son nom réel à un segment du fil d'Ariane.
  *
- * À rendre depuis une page de détail : `<LibelleFilAriane segment={String(projet.id)}
- * nom={projet.name} />`. N'affiche rien.
+ * À rendre depuis une page de détail : `<LibelleFilAriane
+ * segment={`projets/${projet.id}`} nom={projet.name} />`. La clé est
+ * « parent/identifiant », comme dans l'URL. N'affiche rien.
  */
 export function LibelleFilAriane({
   segment,
@@ -135,8 +136,13 @@ function libelle(
   parent: string | undefined,
   nomsConnus: Record<string, string>,
 ): string {
-  if (nomsConnus[segment]) {
-    return nomsConnus[segment];
+  // Les noms sont indexés par « parent/segment » (revue du lot 9) : indexés
+  // par le seul identifiant, le prospect 5 prêtait un instant son nom au
+  // projet 5 pendant la navigation.
+  const cle = parent ? `${parent}/${segment}` : segment;
+
+  if (nomsConnus[cle]) {
+    return nomsConnus[cle];
   }
 
   if (LIBELLES[segment]) {

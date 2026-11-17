@@ -61,7 +61,7 @@ export default async function FicheEntreprisePage({
     <div className="space-y-6">
       {/* Donne son nom réel au segment d'identifiant du fil d'Ariane :
           « #12 » n'apprend rien à personne. */}
-      <LibelleFilAriane segment={String(company.id)} nom={company.name} />
+      <LibelleFilAriane segment={`entreprises/${company.id}`} nom={company.name} />
 
       <LienRetour
         href="/back-office/entreprises"

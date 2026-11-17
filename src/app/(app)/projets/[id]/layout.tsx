@@ -91,7 +91,7 @@ export default async function LayoutFicheProjet({
     <div className="space-y-6">
       {/* Donne son nom réel au segment d'identifiant du fil d'Ariane :
           « #12 » n'apprend rien à personne. */}
-      <LibelleFilAriane segment={String(projet.id)} nom={projet.name} />
+      <LibelleFilAriane segment={`projets/${projet.id}`} nom={projet.name} />
 
       {/* Une seule bande d'en-tête : identité à gauche, actions et navigation
           empilées à droite, le tout au-dessus d'un unique filet.

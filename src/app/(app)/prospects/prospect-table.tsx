@@ -101,6 +101,7 @@ export function ProspectTable({
   total,
   etapes,
   peutArchiver = false,
+  projetArchive = false,
 }: {
   prospects: Prospect[];
   utilisateurs: User[];
@@ -116,6 +117,11 @@ export function ProspectTable({
   etapes?: PipelineStage[];
   /** Archiver relève de l'encadrement, comme l'affectation. */
   peutArchiver?: boolean;
+  /**
+   * Projet archivé (revue du lot 9, décision P7) : ses prospects sont en
+   * lecture seule, et aucune ligne ne propose d'action.
+   */
+  projetArchive?: boolean;
 }) {
   const [selection, setSelection] = useState<number[]>([]);
   const [destinataire, setDestinataire] = useState<string>("");
@@ -278,7 +284,10 @@ export function ProspectTable({
                     </TableCell>
 
                     <TableCell>
-                      {etapes ? (
+                      {/* Lecture seule pour un prospect archivé, effacé ou
+                          d'un projet archivé (revue du lot 9) : la pastille
+                          ne s'ouvre plus, l'API refuserait le changement. */}
+                      {etapes && !(projetArchive || prospect.is_archived || prospect.is_erased) ? (
                         <StagePopover prospect={prospect} etapes={etapes} />
                       ) : prospect.stage ? (
                         <StageChip stage={prospect.stage} />
@@ -320,11 +329,20 @@ export function ProspectTable({
                         tableau pour deux mots déjà connus. Le nom du prospect
                         est porté par `aria-label`, sans quoi une synthèse
                         vocale annoncerait trente fois « Modifier ». */}
+                    {/* Revue du lot 9, planche S-03 : une fiche effacée n'a
+                        aucune action ; un prospect archivé ne propose que
+                        Désarchiver ; un projet archivé, rien. */}
                     <TableCell className="text-right whitespace-nowrap">
-                      <EditProspectDialog prospect={prospect} compact />
-                      {peutArchiver ? (
-                        <ArchiveProspectButton prospect={prospect} compact />
-                      ) : null}
+                      {prospect.is_erased || projetArchive ? null : (
+                        <>
+                          {prospect.is_archived ? null : (
+                            <EditProspectDialog prospect={prospect} compact />
+                          )}
+                          {peutArchiver ? (
+                            <ArchiveProspectButton prospect={prospect} compact />
+                          ) : null}
+                        </>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

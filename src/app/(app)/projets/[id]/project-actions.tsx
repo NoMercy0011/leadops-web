@@ -66,6 +66,9 @@ export function EditProjectDialog({
   projet: Project;
   variantes: Variant[];
 }) {
+  // Un projet archivé est en lecture seule (règle R3, décision P7) : le
+  // bouton reste visible et désactivé ; seule la réactivation reste permise.
+  const lectureSeule = projet.status === "archived";
   const [open, setOpen] = useState(false);
 
   const [state, formAction] = useActionState(
@@ -88,7 +91,7 @@ export function EditProjectDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" disabled={lectureSeule}>
           <Pencil className="size-4" aria-hidden />
           Modifier
         </Button>
@@ -194,6 +197,19 @@ export function ProjectStatusActions({ projet }: { projet: Project }) {
       const resultat = await changeProjectStatus(projet.id, statut);
 
       if (resultat.success) toast.success(resultat.success);
+
+      // Réactiver au-delà du plafond (planche S-01) : un avis qui reste
+      // jusqu'à ce qu'on le ferme, avec les chiffres du plan, plutôt qu'un
+      // toast qui disparaît avant d'avoir été lu.
+      if (resultat.code === "subscription.limit_reached") {
+        toast.error("Plafond de projets atteint", {
+          description: `${resultat.message ?? ""} Archivez un autre projet, ou demandez un changement de plan.`,
+          duration: Infinity,
+          closeButton: true,
+        });
+        return;
+      }
+
       if (resultat.message) toast.error(resultat.message);
     });
   }

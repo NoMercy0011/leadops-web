@@ -10,7 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton";
  */
 export default function ChargementOngletProjet() {
   return (
-    <div className="space-y-6" aria-busy aria-label="Chargement de l'onglet">
+    <div className="space-y-6" role="status" aria-busy>
+      <span className="sr-only">Chargement de l&apos;onglet…</span>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[0, 1, 2, 3].map((index) => (
           <Skeleton key={index} className="h-28 rounded-xl" />

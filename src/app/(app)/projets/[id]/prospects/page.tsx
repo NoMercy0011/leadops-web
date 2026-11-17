@@ -103,6 +103,7 @@ export default async function ProspectsDuProjetPage({
           utilisateurs={utilisateurs.data}
           peutReaffecter={encadrement}
           peutArchiver={encadrement}
+          projetArchive={projet.status === "archived"}
           fuseau={user.company?.timezone}
           total={prospects.meta.total}
           // Tous les prospects de cet écran partagent un pipeline : l'étape

@@ -3,6 +3,7 @@ import { Archive, Columns3 } from "lucide-react";
 
 import { CreateProspectDialog } from "@/app/(app)/prospects/create-prospect-dialog";
 import { ImportDialog } from "@/app/(app)/prospects/import-dialog";
+import { lienExportProspects } from "@/lib/export-prospects";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/dal";
 import { getProject, listCompanyUsers } from "@/lib/projects";
@@ -46,8 +47,7 @@ export default async function ActionsProspects({
 
   // L'export reprend la vue affichée : les archivés quand on les regarde
   // (lot 9, faille F17). Le relais transmet le paramètre à l'API.
-  const exporter = new URLSearchParams({ project_id: String(projectId) });
-  if (archives) exporter.set("archived", "1");
+  const exporter = lienExportProspects(filtres, { project_id: String(projectId) });
 
   return (
     <>
@@ -55,7 +55,9 @@ export default async function ActionsProspects({
           S-01) : il n'avait rien à faire sur les autres onglets. Il n'est
           proposé que si le projet accepte des prospects — l'API le refuse sur
           un projet suspendu, terminé ou archivé. */}
-      {encadrement && projet.accepts_new_prospects ? (
+      {/* Ni import ni création dans la vue des archivés (planche S-03) :
+          on y range, on n'y ajoute pas. */}
+      {encadrement && projet.accepts_new_prospects && !archives ? (
         <ImportDialog projet={projet} taille="sm" />
       ) : null}
 
@@ -77,12 +79,12 @@ export default async function ActionsProspects({
       </Button>
 
       <Button asChild variant="outline" size="sm">
-        <a href={`/api/prospects/export?${exporter.toString()}`}>Exporter</a>
+        <a href={exporter}>Exporter</a>
       </Button>
 
       {/* Un projet fermé refuse les créations côté API : offrir le bouton
           mènerait à un échec annoncé. */}
-      {projet.accepts_new_prospects ? (
+      {projet.accepts_new_prospects && !archives ? (
         <CreateProspectDialog
           projets={[projet]}
           utilisateurs={utilisateurs.data}

@@ -99,7 +99,7 @@ export default async function FicheProspectPage({
     <div className="space-y-6">
       {/* Donne son nom réel au segment d'identifiant du fil d'Ariane :
           « #12 » n'apprend rien à personne. */}
-      <LibelleFilAriane segment={String(prospect.id)} nom={prospect.full_name} />
+      <LibelleFilAriane segment={`prospects/${prospect.id}`} nom={prospect.full_name} />
 
       <LienRetour href="/prospects" label="Tous les prospects" />
 

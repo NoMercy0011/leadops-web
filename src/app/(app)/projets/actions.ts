@@ -12,6 +12,8 @@ export interface ActionState {
   message?: string;
   success?: string;
   fieldErrors?: Record<string, string>;
+  /** Code stable de l'API : l'écran distingue les refus par lui (revue du lot 9). */
+  code?: string;
 }
 
 /**
@@ -24,17 +26,31 @@ export interface ActionState {
 function toState(error: unknown): ActionState {
   if (error instanceof ApiError) {
     if (error.errors) {
-      return {
-        fieldErrors: Object.fromEntries(
-          Object.entries(error.errors).map(([champ, messages]) => [
-            champ,
-            messages[0],
-          ]),
-        ),
-      };
+      const fieldErrors = Object.fromEntries(
+        Object.entries(error.errors).map(([champ, messages]) => [
+          champ,
+          messages[0],
+        ]),
+      );
+
+      // Le premier message de champ sert aussi de message général : les
+      // commandes sans formulaire restaient muettes (revue du lot 9, F13).
+      return { fieldErrors, message: Object.values(fieldErrors)[0], code: error.code };
     }
 
-    return { message: error.message };
+    // Codes métier — plafond atteint, écriture bloquée, lecture seule : le
+    // message de l'API dit quoi faire, il passe tel quel.
+    if (error.code && error.code !== "auth.forbidden") {
+      return { message: error.message, code: error.code };
+    }
+
+    // Refus de droit ou projet introuvable : le message brut de Laravel cite
+    // une classe Eloquent, ou il est en anglais (revue du lot 9).
+    if ([403, 404].includes(error.status)) {
+      return { message: "Ce projet n'est plus accessible.", code: error.code };
+    }
+
+    return { message: error.message, code: error.code };
   }
 
   return { message: "Le service est momentanément indisponible." };

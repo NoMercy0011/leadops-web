@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { FILTRES_EXPORT } from "@/lib/export-prospects";
 import { getSessionToken } from "@/lib/session";
 
 /**
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
   // filtre l'export comme elle filtre la liste. Seuls ces paramètres passent —
   // le relais ne transmet rien d'autre que ce que le contrat connaît.
   const transmis = new URLSearchParams();
-  for (const cle of ["project_id", "archived", "stage_id", "assigned_user_id", "search"]) {
+  for (const cle of FILTRES_EXPORT) {
     const valeur = request.nextUrl.searchParams.get(cle);
     if (valeur !== null && valeur !== "") transmis.set(cle, valeur);
   }

@@ -109,6 +109,13 @@ function decrire(activite: ProspectActivity): React.ReactNode {
     case "imported":
       return "Importé depuis un fichier";
 
+    // Le motif d'archivage, promis « conservé au journal » par la boîte de
+    // confirmation (revue du lot 9). Après un effacement, il a disparu du
+    // payload et seul le libellé reste.
+    case "archived":
+    case "unarchived":
+      return p.motif ? `${activite.type_label} — ${String(p.motif)}` : activite.type_label;
+
     default:
       return activite.type_label;
   }
