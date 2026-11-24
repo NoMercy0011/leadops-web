@@ -51,8 +51,13 @@ function FieldGroup({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+// CORRECTION LOCALE (lot 10) — à conserver après tout `shadcn add` :
+// `text-destructive-subtle-foreground` au lieu de `text-destructive`. En thème
+// sombre, `--destructive` (#ef233c) sur une carte (#232538) ne donne que
+// 3,57:1, sous le seuil AA de 4,5:1 ; le jeton « subtle » donne 6,71:1, et
+// vaut la même couleur que `--destructive` en thème clair (5,25:1).
 const fieldVariants = cva(
-  "group/field flex w-full gap-2 data-[invalid=true]:text-destructive",
+  "group/field flex w-full gap-2 data-[invalid=true]:text-destructive-subtle-foreground",
   {
     variants: {
       orientation: {
@@ -216,7 +221,9 @@ function FieldError({
     <div
       role="alert"
       data-slot="field-error"
-      className={cn("text-sm font-normal text-destructive", className)}
+      // CORRECTION LOCALE (lot 10) : voir `fieldVariants` — contraste AA en
+      // thème sombre.
+      className={cn("text-sm font-normal text-destructive-subtle-foreground", className)}
       {...props}
     >
       {content}
