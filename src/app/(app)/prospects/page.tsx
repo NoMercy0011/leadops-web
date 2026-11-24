@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { lienExportProspects } from "@/lib/export-prospects";
 import { getOptionsFiltres } from "@/lib/options";
+import { PaginationListe } from "@/components/pagination-liste";
 import { requireUser } from "@/lib/dal";
 import { listProspects } from "@/lib/prospects";
 import { listCompanyUsers, listProjects } from "@/lib/projects";
@@ -32,6 +33,7 @@ export default async function ProspectsPage({
   const [prospects, projets, utilisateurs] = await Promise.all([
     listProspects({
       project_id: projectId,
+      page: Math.max(1, Number.parseInt(String(filtres.page ?? "1"), 10) || 1),
       stage_id: Number(filtres.stage_id) || undefined,
       assigned_user_id:
         typeof filtres.assigned_user_id === "string"
@@ -138,13 +140,22 @@ export default async function ProspectsPage({
               description="Ajustez les filtres, ou ajoutez un premier prospect à ce projet."
             />
           ) : (
-            <ProspectTable
+            <>
+<ProspectTable
               prospects={prospects.data}
               utilisateurs={utilisateurs.data}
               peutReaffecter={encadrement}
               fuseau={user.company?.timezone}
               total={prospects.meta.total}
             />
+            <PaginationListe
+              base={"/prospects"}
+              filtres={filtres}
+              page={prospects.meta.current_page}
+              derniere={prospects.meta.last_page}
+              total={prospects.meta.total}
+            />
+</>
           )}
         </>
       )}

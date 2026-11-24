@@ -4,6 +4,7 @@ import { ProspectFilters } from "@/app/(app)/prospects/prospect-filters";
 import { ProspectSummaryStrip } from "@/app/(app)/prospects/prospect-summary";
 import { ProspectTable } from "@/app/(app)/prospects/prospect-table";
 import { EmptyState } from "@/components/empty-state";
+import { PaginationListe } from "@/components/pagination-liste";
 import { requireUser } from "@/lib/dal";
 import { getProject, listCompanyUsers } from "@/lib/projects";
 import { listProspects } from "@/lib/prospects";
@@ -37,6 +38,7 @@ export default async function ProspectsDuProjetPage({
     getProject(projectId),
     listProspects({
       project_id: projectId,
+      page: Math.max(1, Number.parseInt(String(filtres.page ?? "1"), 10) || 1),
       stage_id: Number(filtres.stage_id) || undefined,
       assigned_user_id:
         typeof filtres.assigned_user_id === "string"
@@ -98,7 +100,8 @@ export default async function ProspectsDuProjetPage({
           }
         />
       ) : (
-        <ProspectTable
+        <>
+<ProspectTable
           prospects={prospects.data}
           utilisateurs={utilisateurs.data}
           peutReaffecter={encadrement}
@@ -111,6 +114,14 @@ export default async function ProspectsDuProjetPage({
           // impossible sur la liste globale, où les projets diffèrent.
           etapes={projet.stages ?? []}
         />
+        <PaginationListe
+          base={`/projets/${projectId}/prospects`}
+          filtres={filtres}
+          page={prospects.meta.current_page}
+          derniere={prospects.meta.last_page}
+          total={prospects.meta.total}
+        />
+</>
       )}
     </div>
   );
