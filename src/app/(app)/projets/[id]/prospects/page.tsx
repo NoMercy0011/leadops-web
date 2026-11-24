@@ -1,10 +1,13 @@
+import { redirect } from "next/navigation";
 import { Users } from "lucide-react";
 
 import { ProspectFilters } from "@/app/(app)/prospects/prospect-filters";
 import { ProspectSummaryStrip } from "@/app/(app)/prospects/prospect-summary";
 import { ProspectTable } from "@/app/(app)/prospects/prospect-table";
 import { EmptyState } from "@/components/empty-state";
+import { PaginationListe } from "@/components/pagination-liste";
 import { requireUser } from "@/lib/dal";
+import { getOptionsFiltres } from "@/lib/options";
 import { getProject, listCompanyUsers } from "@/lib/projects";
 import { listProspects } from "@/lib/prospects";
 
@@ -37,6 +40,7 @@ export default async function ProspectsDuProjetPage({
     getProject(projectId),
     listProspects({
       project_id: projectId,
+      page: Math.max(1, Number.parseInt(String(filtres.page ?? "1"), 10) || 1),
       stage_id: Number(filtres.stage_id) || undefined,
       assigned_user_id:
         typeof filtres.assigned_user_id === "string"
@@ -55,11 +59,22 @@ export default async function ProspectsDuProjetPage({
 
   // Les filtres courants, pour que les tuiles cliquables du résumé
   // restreignent la sélection au lieu de la remplacer.
+  // Sans `page` (revue du lot 10) : changer de filtre repart de la première
+  // page, faute de quoi la page 5 d'un nouveau filtre d'une seule page
+  // s'affichait vide.
   const filtresActifs = new URLSearchParams(
     Object.entries(filtres).flatMap(([cle, valeur]) =>
-      typeof valeur === "string" && valeur !== "" ? [[cle, valeur]] : [],
+      cle !== "page" && typeof valeur === "string" && valeur !== "" ? [[cle, valeur]] : [],
     ),
   );
+
+  // Une page au-delà de la dernière (`?page=999`) revient à la dernière
+  // (revue du lot 10) : l'écran tombait sur l'état vide, sans pagination.
+  if (prospects.data.length === 0 && prospects.meta.total > 0) {
+    const suivants = new URLSearchParams(filtresActifs);
+    suivants.set("page", String(prospects.meta.last_page));
+    redirect(`${`/projets/${projectId}/prospects`}?${suivants.toString()}`);
+  }
 
   return (
     <div className="space-y-6">
@@ -98,9 +113,10 @@ export default async function ProspectsDuProjetPage({
           }
         />
       ) : (
-        <ProspectTable
+        <>
+<ProspectTable
           prospects={prospects.data}
-          utilisateurs={utilisateurs.data}
+          utilisateurs={encadrement ? (await getOptionsFiltres()).users : []}
           peutReaffecter={encadrement}
           peutArchiver={encadrement}
           projetArchive={projet.status === "archived"}
@@ -111,6 +127,14 @@ export default async function ProspectsDuProjetPage({
           // impossible sur la liste globale, où les projets diffèrent.
           etapes={projet.stages ?? []}
         />
+        <PaginationListe
+          base={`/projets/${projectId}/prospects`}
+          filtres={filtres}
+          page={prospects.meta.current_page}
+          derniere={prospects.meta.last_page}
+          total={prospects.meta.total}
+        />
+</>
       )}
     </div>
   );

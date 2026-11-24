@@ -34,9 +34,9 @@ export function ReportFilters({
   to,
   parametres,
 }: {
-  projets: Project[];
+  projets: Pick<Project, "id" | "name">[];
   variantes: Variant[];
-  utilisateurs: User[];
+  utilisateurs: Pick<User, "id" | "name">[];
   from: string;
   to: string;
   parametres: URLSearchParams;

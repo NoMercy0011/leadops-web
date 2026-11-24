@@ -11,14 +11,9 @@ import { resumeAgenda } from "@/lib/agenda";
 import { listAppointments } from "@/lib/appointments";
 import { requireUser } from "@/lib/dal";
 import { aujourdhui, cleJour, formatNombre } from "@/lib/format";
-import { listCompanyUsers, listProjects } from "@/lib/projects";
+import { getOptionsFiltres } from "@/lib/options";
 import { cn } from "@/lib/utils";
 import type { Appointment } from "@/lib/types";
-
-const AUCUN_UTILISATEUR = {
-  data: [],
-  meta: { current_page: 1, last_page: 1, total: 0 },
-};
 
 /**
  * Plage à demander à l'API : le mois affiché, débordé d'une semaine.
@@ -123,17 +118,20 @@ export async function Agenda({
       ? params.date
       : ceJour;
 
-  const [rendezVous, projets, utilisateurs] = await Promise.all([
+  const [rendezVous, options] = await Promise.all([
     listAppointments({
       ...bornes(ancre),
       user_id: typeof params.user_id === "string" ? params.user_id : undefined,
       project_id: projetId ?? (Number(params.project_id) || undefined),
       status: typeof params.status === "string" ? params.status : undefined,
     }),
-    // Le projet est fixé dans l'onglet d'un projet : la liste ne sert à rien.
-    projetId ? Promise.resolve({ data: [] }) : listProjects(),
-    encadrement ? listCompanyUsers() : Promise.resolve(AUCUN_UTILISATEUR),
+    // Tout le périmètre, sans la borne de 25 des listes paginées (lot 10, R2).
+    getOptionsFiltres(),
   ]);
+
+  // Le projet est fixé dans l'onglet d'un projet : la liste ne sert à rien.
+  const projets = { data: projetId ? [] : options.projects };
+  const utilisateurs = { data: encadrement ? options.users : [] };
 
   const filtresActifs = new URLSearchParams(
     Object.entries(params).flatMap(([cle, valeur]) =>

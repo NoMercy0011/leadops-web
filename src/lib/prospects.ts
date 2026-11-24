@@ -21,6 +21,8 @@ export interface ProspectFilters {
   /** Ne retient que les prospects archivés. */
   archived?: string;
   per_page?: number;
+  /** Page demandée (lot 10, R3). */
+  page?: number;
 }
 
 function toQuery(filters: ProspectFilters): string {

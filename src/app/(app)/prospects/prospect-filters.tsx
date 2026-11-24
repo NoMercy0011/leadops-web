@@ -32,8 +32,8 @@ export function ProspectFilters({
    * Vide dans l'onglet Prospects d'un projet : le projet y est fixé par
    * l'URL, et proposer d'en changer ferait quitter la fiche sans le dire.
    */
-  projets: Project[];
-  utilisateurs: User[];
+  projets: Pick<Project, "id" | "name">[];
+  utilisateurs: Pick<User, "id" | "name" | "role">[];
   etapes: PipelineStage[];
   facettes: ProspectFacets;
   parametres: URLSearchParams;
