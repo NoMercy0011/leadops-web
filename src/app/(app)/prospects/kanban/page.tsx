@@ -71,7 +71,11 @@ export default async function KanbanPage({
         description="Faites glisser une carte pour changer son étape. Le déplacement est aussi accessible au clavier."
         actions={
           <>
-            <ProjectPicker projets={projets.data} actif={projectId} />
+            <ProjectPicker
+              projets={projets.data}
+              actif={projectId}
+              parametres={new URLSearchParams()}
+            />
             <Button asChild variant="outline">
               <Link href={`/prospects?project_id=${projectId}`}>
                 <List className="size-4" aria-hidden />

@@ -1,13 +1,16 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import {
+  CircleCheck,
+  CircleSlash,
+  PhoneCall,
+  TrendingUp,
+  TriangleAlert,
+  Users,
+} from "lucide-react";
 
-import { PipelineEditor } from "./pipeline-editor";
-import { QuestionnaireBuilder } from "./questionnaire-builder";
-import { TeamEditor } from "./team-editor";
-import { LienRetour } from "@/components/lien-retour";
-import { Notice } from "@/components/notice";
-import { PageHeader } from "@/components/page-header";
-import { StatusBadge, type Tone } from "@/components/status-badge";
+import { DataQualityPanel } from "./data-quality";
+import { PipelineHealthPanel } from "./pipeline-health";
+import { VariantComparisonPanel } from "./variant-comparison";
+import { StatTile } from "@/components/stat-tile";
 import {
   Card,
   CardContent,
@@ -15,173 +18,229 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ApiError } from "@/lib/api";
 import { requireUser } from "@/lib/dal";
-import { formatDate } from "@/lib/format";
-import { getProject, listCompanyUsers } from "@/lib/projects";
-import { listQuestions } from "@/lib/questionnaire";
-import type { ProjectStatus } from "@/lib/types";
+import {
+  getDataQuality,
+  getPipelineHealth,
+  getProject,
+  getVariantComparison,
+} from "@/lib/projects";
+import { cleJour } from "@/lib/format";
+import { listProspects } from "@/lib/prospects";
+import { getReport } from "@/lib/reporting";
 
-export const metadata: Metadata = {
-  title: "Projet",
-};
-
-const TONS: Record<ProjectStatus, Tone> = {
-  active: "success",
-  suspended: "warning",
-  completed: "neutral",
-};
-
-export default async function FicheProjetPage({
+/**
+ * Tableau de bord du projet.
+ *
+ * La période demandée court depuis la création du projet, et non sur les
+ * trente derniers jours comme le fait l'API par défaut : la question qu'on se
+ * pose en ouvrant un projet est « où en est-il », pas « qu'a-t-il produit ce
+ * mois-ci ». Un projet lancé il y a six semaines afficherait sinon un taux
+ * calculé sur une fraction de son histoire, sans que rien ne le signale — et
+ * c'est aussi pourquoi le libellé nomme la période qu'il couvre réellement.
+ */
+export default async function TableauDeBordProjetPage({
   params,
 }: PageProps<"/projets/[id]">) {
   const user = await requireUser();
   const { id } = await params;
   const projectId = Number(id);
 
-  if (!Number.isInteger(projectId)) {
-    notFound();
-  }
+  const projet = await getProject(projectId);
+  const encadrement = user.role === "admin_client" || user.role === "manager";
 
-  const editable = user.role === "admin_client";
+  // Sans date de création connue, on laisse l'API retenir sa fenêtre par
+  // défaut — trente jours — et le libellé le dit, plutôt que d'annoncer une
+  // période que les chiffres ne couvrent pas.
+  // La journée locale de l'entreprise, pas la date UTC : sur un fuseau
+  // négatif, la date UTC tombait le lendemain et le premier soir du projet
+  // sortait de la période (point vert du lot 9).
+  const depuis = projet.created_at
+    ? cleJour(projet.created_at, { timeZone: user.company?.timezone })
+    : undefined;
+  const periode = depuis
+    ? "depuis la création du projet"
+    : "sur les trente derniers jours";
 
-  let projet;
-
-  try {
-    projet = await getProject(projectId);
-  } catch (error) {
-    // 403 et 404 mènent au même écran : les distinguer confirmerait
-    // l'existence d'un projet à qui n'y a pas accès.
-    if (error instanceof ApiError && [403, 404].includes(error.status)) {
-      notFound();
-    }
-    throw error;
-  }
-
-  // La liste des candidats n'a de sens que pour qui peut modifier l'équipe.
-  const [candidats, questions] = await Promise.all([
-    editable ? listCompanyUsers().then((page) => page.data) : Promise.resolve([]),
-    listQuestions(projectId),
+  // La santé du pipeline, la comparaison et l'audit sont réservés à
+  // l'encadrement côté API : les demander pour un commercial produirait un 403
+  // à chaque visite.
+  //
+  // Deux familles de requêtes (lot 9, faille F16). Les chiffres principaux
+  // sont indispensables : s'ils manquent, l'écran entier tombe sur sa
+  // frontière d'erreur. Les panneaux d'analyse, eux, échouent chacun dans sa
+  // carte — un `Promise.all` faisait tomber toute la fiche, en-tête et onglets
+  // compris, pour un seul panneau indisponible.
+  const [[rapport, prospects], [sante, comparaison, qualite]] = await Promise.all([
+    Promise.all([
+      getReport({ project_id: projectId, from: depuis }),
+      // `per_page: 1` : seul le résumé agrégé est utilisé ici, la liste est
+      // l'affaire de l'onglet Prospects.
+      listProspects({ project_id: projectId, per_page: 1 }),
+    ]),
+    Promise.allSettled([
+      encadrement ? getPipelineHealth(projectId) : Promise.resolve(null),
+      encadrement ? getVariantComparison(projectId) : Promise.resolve(null),
+      encadrement ? getDataQuality(projectId) : Promise.resolve(null),
+    ]),
   ]);
+
+  const totaux = rapport.totals;
+  const resume = prospects.summary;
+
+  const versProspects = `/projets/${projet.id}/prospects`;
 
   return (
     <div className="space-y-6">
-      <LienRetour href="/projets" label="Tous les projets" />
+      {/* Une seule dominante : le taux de conversion répond à la question
+          qu'on se pose en ouvrant un projet. Tout le reste l'explique. */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile
+          className="lg:col-span-2"
+          taille="lg"
+          label="Taux de conversion"
+          valeur={rapport.rates.conversion}
+          suffixe="%"
+          detail={`${totaux.converted} converti${totaux.converted > 1 ? "s" : ""} sur ${totaux.prospects} prospect${totaux.prospects > 1 ? "s" : ""} ${periode}.`}
+          icon={TrendingUp}
+          accent="success"
+        />
 
-      <PageHeader
-        titre={projet.name}
-        description={
-          <>
-            {projet.product ?? "Produit non renseigné"}
-            {projet.target ? ` · Cible : ${projet.target}` : null}
-            {projet.variant ? ` · Variante : ${projet.variant.name}` : null}
-          </>
-        }
-        actions={
-          <StatusBadge tone={TONS[projet.status]}>
-            {projet.status_label}
-          </StatusBadge>
-        }
-      />
+        <StatTile
+          label="Prospects"
+          valeur={resume.total}
+          detail={
+            resume.non_affectes > 0
+              ? `${resume.non_affectes} sans commercial`
+              : "Tous affectés"
+          }
+          icon={Users}
+          href={versProspects}
+        />
 
-      {!projet.accepts_new_prospects ? (
-        <Notice variant="warning" titre="Projet fermé aux nouveaux prospects">
-          Les données existantes restent consultables et exportables.
-        </Notice>
-      ) : null}
+        <StatTile
+          label="Relances en retard"
+          valeur={resume.en_retard}
+          detail="Prochaine action datée, non traitée"
+          icon={TriangleAlert}
+          // Le seul indicateur de cet écran qui appelle une action
+          // aujourd'hui : c'est ce qui justifie de le mettre en évidence, et
+          // rien d'autre. Une page où tout est accentué n'accentue rien.
+          accent={resume.en_retard > 0 ? "warning" : undefined}
+          href={versProspects}
+        />
+      </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      {/* Le second rang est du contexte : exact, utile, mais ce n'est pas ce
+          qu'on vient chercher. */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile
+          taille="sm"
+          label="Taux de qualification"
+          valeur={rapport.rates.qualification}
+          suffixe="%"
+          detail={`${totaux.qualified} qualifié${totaux.qualified > 1 ? "s" : ""}`}
+          icon={CircleCheck}
+        />
+        <StatTile
+          taille="sm"
+          label="Contactés"
+          valeur={totaux.contacted}
+          detail="Au moins une interaction"
+          icon={PhoneCall}
+        />
+        <StatTile
+          taille="sm"
+          label="Perdus"
+          valeur={totaux.lost}
+          suffixe={rapport.rates.loss !== null ? `· ${rapport.rates.loss} %` : undefined}
+          detail="Affaires closes sans suite"
+          icon={CircleSlash}
+        />
+        <StatTile
+          taille="sm"
+          label="Rendez-vous"
+          valeur={totaux.appointments}
+          detail={periode.replace(/^./, (c) => c.toUpperCase())}
+          href={`/projets/${projet.id}/rendez-vous`}
+        />
+      </div>
+
+      {sante.status === "rejected" ? (
+        <PanneauIndisponible titre="Santé du pipeline" />
+      ) : sante.value ? (
+        <Card>
           <CardHeader>
-            <CardTitle>Pipeline</CardTitle>
+            <CardTitle>Santé du pipeline</CardTitle>
             <CardDescription>
-              Les étapes sont propres à ce projet. Modifier ce pipeline
-              n&apos;affecte aucun autre.
+              La répartition dit où sont les prospects ; la durée dit où ils
+              s&apos;arrêtent. Deux étapes peuvent porter le même nombre de
+              dossiers sans appeler la même action.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <PipelineEditor
-              projectId={projet.id}
-              stages={projet.stages ?? []}
-              editable={editable}
-            />
+            <PipelineHealthPanel sante={sante.value} />
           </CardContent>
         </Card>
+      ) : null}
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Questionnaire</CardTitle>
-              <CardDescription>
-                Questions de qualification posées sur chaque prospect de ce
-                projet. Elles se configurent ici, sans déploiement.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <QuestionnaireBuilder
-                projectId={projet.id}
-                questions={questions}
-                editable={editable}
-              />
-            </CardContent>
-          </Card>
+      {encadrement ? (
+        <div className="grid gap-6 lg:grid-cols-2">
+          {comparaison.status === "rejected" ? (
+            <PanneauIndisponible titre="Face aux autres offres" />
+          ) : comparaison.value ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Face aux autres offres</CardTitle>
+                <CardDescription>
+                  Un taux de conversion isolé ne dit rien ; rapporté aux autres
+                  projets du même axe, il devient une décision.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <VariantComparisonPanel comparaison={comparaison.value} />
+              </CardContent>
+            </Card>
+          ) : null}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Équipe</CardTitle>
-              <CardDescription>
-                Les commerciaux affectés voient ce projet et ses prospects.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {editable ? (
-                <TeamEditor
-                  projectId={projet.id}
-                  candidats={candidats}
-                  membresInitiaux={(projet.members ?? []).map((m) => m.id)}
-                  editable
-                />
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {(projet.members ?? []).map((membre) => (
-                    <li key={membre.id} className="flex justify-between gap-2">
-                      <span className="truncate">{membre.name}</span>
-                      <span className="text-muted-foreground shrink-0 text-xs">
-                        {membre.role_label}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Informations</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Créé le</span>
-                <span>
-                  {formatDate(projet.created_at, {
-                    timeZone: user.company?.timezone,
-                  })}
-                </span>
-              </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Étapes</span>
-                <span>{projet.stages?.length ?? 0}</span>
-              </div>
-              {projet.description ? (
-                <p className="text-muted-foreground border-t pt-3 leading-relaxed">
-                  {projet.description}
-                </p>
-              ) : null}
-            </CardContent>
-          </Card>
+          {qualite.status === "rejected" ? (
+            <PanneauIndisponible titre="Qualité des données" />
+          ) : qualite.value ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Qualité des données</CardTitle>
+                <CardDescription>
+                  Ces défauts n&apos;empêchent pas de travailler : ils faussent
+                  des chiffres.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DataQualityPanel qualite={qualite.value} />
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
-      </div>
+      ) : null}
     </div>
+  );
+}
+
+/**
+ * Carte d'un panneau d'analyse qui n'a pas pu se charger (lot 9, faille F16).
+ * Le reste du tableau de bord reste lisible : seule cette carte le dit.
+ */
+function PanneauIndisponible({ titre }: { titre: string }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{titre}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p role="status" className="text-muted-foreground text-sm">
+          Ce panneau n&apos;a pas pu se charger. Le reste du tableau de bord
+          est à jour ; rechargez la page dans un instant pour le retrouver.
+        </p>
+      </CardContent>
+    </Card>
   );
 }

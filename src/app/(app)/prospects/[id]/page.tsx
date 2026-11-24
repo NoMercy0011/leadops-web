@@ -4,8 +4,9 @@ import { Mail, MapPin, Phone } from "lucide-react";
 
 import { ActivityTimeline } from "./activity-timeline";
 import {
-  DeleteProspectButton,
+  ArchiveProspectButton,
   EditProspectDialog,
+  EraseProspectButton,
 } from "./edit-prospect-dialog";
 import {
   AssignSelector,
@@ -13,6 +14,7 @@ import {
   NoteForm,
   StageSelector,
 } from "./prospect-actions";
+import { LibelleFilAriane } from "@/components/fil-ariane";
 import { LienRetour } from "@/components/lien-retour";
 import { Notice } from "@/components/notice";
 import { PageHeader } from "@/components/page-header";
@@ -81,11 +83,24 @@ export default async function FicheProspectPage({
 
   const fuseau = user.company?.timezone;
   const relanceEnRetard =
+    !prospect.is_erased &&
     prospect.next_action_at !== null &&
     new Date(prospect.next_action_at) < new Date();
 
+  // Lot 9, règles R3 et R4 : un prospect archivé, effacé, ou d'un projet
+  // archivé refuse toute écriture. L'API tranche ; l'écran l'annonce et
+  // désactive ses commandes plutôt que de les masquer (décision P7), sauf sur
+  // une fiche effacée, qui n'a plus aucune action (écran S-11).
+  const efface = prospect.is_erased;
+  const projetArchive = projet.status === "archived";
+  const lectureSeule = efface || prospect.is_archived || projetArchive;
+
   return (
     <div className="space-y-6">
+      {/* Donne son nom réel au segment d'identifiant du fil d'Ariane :
+          « #12 » n'apprend rien à personne. */}
+      <LibelleFilAriane segment={`prospects/${prospect.id}`} nom={prospect.full_name} />
+
       <LienRetour href="/prospects" label="Tous les prospects" />
 
       <PageHeader
@@ -99,6 +114,12 @@ export default async function FicheProspectPage({
         }
         actions={
           <>
+          {efface ? (
+            <StatusBadge tone="neutral">
+              Effacé le {formatDate(prospect.erased_at, { timeZone: fuseau })}
+            </StatusBadge>
+          ) : (
+          <>
             {prospect.converted_at ? (
               <StatusBadge tone="success">
                 Converti {formatDistance(prospect.converted_at)}
@@ -109,17 +130,52 @@ export default async function FicheProspectPage({
               </StatusBadge>
             ) : null}
 
-            <EditProspectDialog prospect={prospect} />
+            <EditProspectDialog prospect={prospect} lectureSeule={lectureSeule} />
 
-            {/* La policy réserve la suppression à l'Admin Client. Le bouton
-                n'est masqué que par confort de lecture : c'est l'API qui
-                tranche, et elle refuserait l'appel de toute façon. */}
-            {user.role === "admin_client" ? (
-              <DeleteProspectButton prospect={prospect} />
+            {/* Archiver relève de l'encadrement : sortir un dossier des
+                statistiques ne doit pas revenir à celui qu'elles mesurent.
+                Désarchiver reste possible : c'est le geste qui lève la
+                lecture seule. */}
+            {/* Un prospect d'un projet archivé ne s'archive ni ne se
+                désarchive : seul le projet se réactive (décision R2). */}
+            {encadrement ? (
+              <ArchiveProspectButton prospect={prospect} lectureSeule={projetArchive} />
             ) : null}
+          </>
+          )}
+
+          {/* L'effacement vit hors de la branche conditionnelle, à une place
+              fixe de l'arbre (revue du lot 9) : la fiche se recharge en
+              « Prospect effacé » dès l'effacement, et le bouton, démonté avec
+              la branche, emportait la boîte de résultat et la liste des
+              autres fiches, que l'API ne renvoie qu'une fois. Le composant se
+              masque lui-même sur une fiche effacée, sauf boîte ouverte.
+              La policy réserve l'effacement à l'Admin Client ; il reste
+              proposé sur un prospect archivé (contrat §8). */}
+          {user.role === "admin_client" ? (
+            <EraseProspectButton prospect={prospect} />
+          ) : null}
           </>
         }
       />
+
+      {efface ? (
+        <Notice variant="info" titre="Données personnelles effacées">
+          Cette fiche ne contient plus aucune donnée personnelle. Elle reste
+          comptée dans les statistiques du projet et ne se modifie plus.
+        </Notice>
+      ) : prospect.is_archived ? (
+        <Notice variant="info" titre="Prospect archivé — lecture seule">
+          Il ne figure plus dans les listes et sort de tous les taux —
+          conversion, qualification, perte. Ses données restent intactes ; pour
+          le modifier, désarchivez-le.
+        </Notice>
+      ) : projetArchive ? (
+        <Notice variant="info" titre="Projet archivé — lecture seule">
+          Le projet « {projet.name} » est archivé : ce prospect ne se modifie
+          plus tant que le projet n&apos;est pas réactivé.
+        </Notice>
+      ) : null}
 
       {relanceEnRetard ? (
         <Notice variant="warning" titre="Relance en retard">
@@ -143,7 +199,7 @@ export default async function FicheProspectPage({
                 prospectId={prospect.id}
                 questions={questionnaire.questions}
                 answers={questionnaire.answers}
-                editable
+                editable={!lectureSeule}
               />
             </CardContent>
           </Card>
@@ -157,8 +213,12 @@ export default async function FicheProspectPage({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <NoteForm prospectId={prospect.id} />
-              <Separator />
+              {efface ? null : (
+                <>
+                  <NoteForm prospectId={prospect.id} lectureSeule={lectureSeule} />
+                  <Separator />
+                </>
+              )}
               <ActivityTimeline activites={activites} fuseau={fuseau} />
             </CardContent>
           </Card>
@@ -170,14 +230,24 @@ export default async function FicheProspectPage({
               <CardTitle>Suivi</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <StageSelector prospect={prospect} etapes={projet.stages ?? []} />
+              <StageSelector
+                prospect={prospect}
+                etapes={projet.stages ?? []}
+                lectureSeule={lectureSeule}
+              />
               <AssignSelector
                 prospect={prospect}
                 utilisateurs={utilisateurs.data}
-                editable={encadrement}
+                editable={encadrement && !lectureSeule}
               />
               <Separator />
-              <NextActionForm prospect={prospect} />
+              {efface ? (
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Prochaine action</span> —
+                </p>
+              ) : (
+                <NextActionForm prospect={prospect} lectureSeule={lectureSeule} />
+              )}
             </CardContent>
           </Card>
 
@@ -193,6 +263,8 @@ export default async function FicheProspectPage({
                 prospectId={prospect.id}
                 rendezVous={rendezVous}
                 fuseau={fuseau}
+                lectureSeule={lectureSeule}
+                donneesEffacees={efface}
               />
             </CardContent>
           </Card>
@@ -230,7 +302,12 @@ export default async function FicheProspectPage({
                 </p>
               ) : null}
 
-              {!prospect.phone && !prospect.email && !prospect.address ? (
+              {efface ? (
+                <p className="text-muted-foreground italic">
+                  Effacées le{" "}
+                  {formatDate(prospect.erased_at, { timeZone: fuseau })}.
+                </p>
+              ) : !prospect.phone && !prospect.email && !prospect.address ? (
                 <p className="text-muted-foreground italic">
                   Aucune coordonnée renseignée.
                 </p>

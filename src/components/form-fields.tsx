@@ -1,7 +1,12 @@
 import * as React from "react";
 import { ChevronDown } from "lucide-react";
 
-import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -63,7 +68,11 @@ function Etiquette({
  * Identifiants des éléments décrivant le champ, dans l'ordre où une synthèse
  * vocale doit les lire : l'aide d'abord, l'erreur ensuite.
  */
-function decritPar(id: string, aide: boolean, erreur: boolean): string | undefined {
+function decritPar(
+  id: string,
+  aide: boolean,
+  erreur: boolean,
+): string | undefined {
   const ids = [aide && `${id}-aide`, erreur && `${id}-erreur`].filter(Boolean);
 
   return ids.length > 0 ? ids.join(" ") : undefined;
@@ -87,7 +96,9 @@ export function ChampTexte({
         aria-describedby={decritPar(id, Boolean(aide), Boolean(erreur))}
         {...props}
       />
-      {aide ? <FieldDescription id={`${id}-aide`}>{aide}</FieldDescription> : null}
+      {aide ? (
+        <FieldDescription id={`${id}-aide`}>{aide}</FieldDescription>
+      ) : null}
       <FieldError id={`${id}-erreur`}>{erreur}</FieldError>
     </Field>
   );
@@ -111,7 +122,9 @@ export function ChampZone({
         aria-describedby={decritPar(id, Boolean(aide), Boolean(erreur))}
         {...props}
       />
-      {aide ? <FieldDescription id={`${id}-aide`}>{aide}</FieldDescription> : null}
+      {aide ? (
+        <FieldDescription id={`${id}-aide`}>{aide}</FieldDescription>
+      ) : null}
       <FieldError id={`${id}-erreur`}>{erreur}</FieldError>
     </Field>
   );
@@ -136,11 +149,23 @@ export function ChampZone({
  */
 export function NativeSelect({
   className,
+  enveloppe,
   children,
   ...props
-}: React.ComponentProps<"select">) {
+}: React.ComponentProps<"select"> & {
+  /**
+   * Classes de l'enveloppe — en pratique, la largeur.
+   *
+   * Le chevron est positionné en absolu par rapport à cette enveloppe. Une
+   * largeur posée sur le `className` rétrécit le `<select>` sans rétrécir
+   * l'enveloppe : le chevron reste alors ancré à l'extrême droite de la ligne,
+   * parfois à plusieurs centaines de pixels de son champ. C'est ce qui se
+   * voyait sur la liste des prospects et le calendrier.
+   */
+  enveloppe?: string;
+}) {
   return (
-    <div className="relative w-full">
+    <div className={cn("relative w-full", enveloppe)}>
       <select
         data-slot="native-select"
         className={cn(
@@ -186,7 +211,9 @@ export function ChampSelect({
       >
         {children}
       </NativeSelect>
-      {aide ? <FieldDescription id={`${id}-aide`}>{aide}</FieldDescription> : null}
+      {aide ? (
+        <FieldDescription id={`${id}-aide`}>{aide}</FieldDescription>
+      ) : null}
       <FieldError id={`${id}-erreur`}>{erreur}</FieldError>
     </Field>
   );

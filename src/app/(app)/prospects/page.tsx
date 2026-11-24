@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Columns3, Users } from "lucide-react";
+import { Archive, Columns3, Users } from "lucide-react";
 
 import { CreateProspectDialog } from "./create-prospect-dialog";
 import { ImportDialog } from "./import-dialog";
@@ -10,6 +10,7 @@ import { ProspectTable } from "./prospect-table";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { lienExportProspects } from "@/lib/export-prospects";
 import { requireUser } from "@/lib/dal";
 import { listProspects } from "@/lib/prospects";
 import { listCompanyUsers, listProjects } from "@/lib/projects";
@@ -36,6 +37,9 @@ export default async function ProspectsPage({
           ? filtres.assigned_user_id
           : undefined,
       search: typeof filtres.search === "string" ? filtres.search : undefined,
+      // L'API écarte les archivés par défaut ; les demander explicitement est
+      // le seul moyen de les revoir.
+      archived: filtres.archived === "1" ? "1" : undefined,
     }),
     listProjects(),
     // La liste des commerciaux ne sert qu'aux actions d'encadrement.
@@ -47,6 +51,7 @@ export default async function ProspectsPage({
     : undefined;
 
   const aucunProjet = projets.data.length === 0;
+  const archives = filtres.archived === "1";
 
   // Les filtres courants, pour que les tuiles cliquables du résumé restreignent
   // la sélection au lieu de la remplacer.
@@ -77,12 +82,16 @@ export default async function ProspectsPage({
                 </Link>
               </Button>
               {encadrement ? <ImportDialog projets={projets.data} /> : null}
+              <Button asChild variant={archives ? "secondary" : "outline"}>
+                <Link href={archives ? "/prospects" : "/prospects?archived=1"}>
+                  <Archive className="size-4" aria-hidden />
+                  {/* Mêmes libellés que l'onglet du projet (décision P4). */}
+                  {archives ? "Voir les actifs" : "Voir les archivés"}
+                </Link>
+              </Button>
               <Button asChild variant="outline">
-                <a
-                  href={`/api/prospects/export${projectId ? `?project_id=${projectId}` : ""}`}
-                >
-                  Exporter
-                </a>
+                {/* Tous les filtres affichés (revue du lot 9, F17). */}
+                <a href={lienExportProspects(filtres)}>Exporter</a>
               </Button>
               <CreateProspectDialog
                 projets={projets.data}
@@ -113,6 +122,8 @@ export default async function ProspectsPage({
             projets={projets.data}
             utilisateurs={utilisateurs.data}
             etapes={projetActif?.stages ?? []}
+            facettes={prospects.facets}
+            parametres={filtresActifs}
           />
 
           {prospects.data.length === 0 ? (

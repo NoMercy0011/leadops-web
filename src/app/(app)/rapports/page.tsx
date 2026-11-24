@@ -46,6 +46,14 @@ export default async function RapportsPage({
     to: lire("to"),
   };
 
+  // Les filtres courants, pour que chaque jeton conserve ceux des autres
+  // familles au lieu de les remplacer.
+  const filtresActifs = new URLSearchParams(
+    Object.entries(params).flatMap(([cle, valeur]) =>
+      typeof valeur === "string" && valeur !== "" ? [[cle, valeur]] : [],
+    ),
+  );
+
   const [rapport, projets, variantes, utilisateurs] = await Promise.all([
     getReport(filtres),
     listProjects(),
@@ -89,6 +97,7 @@ export default async function RapportsPage({
         utilisateurs={utilisateurs.data}
         from={rapport.period.from.slice(0, 10)}
         to={rapport.period.to.slice(0, 10)}
+        parametres={filtresActifs}
       />
 
       {/* Sept tuiles de même poids mêlaient les comptes et les taux, sans

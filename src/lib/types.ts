@@ -60,7 +60,19 @@ export interface User {
   company?: Company;
 }
 
-export type ProjectStatus = "active" | "suspended" | "completed";
+/**
+ * Statut d'un projet.
+ *
+ * « Archivé » remplace la suppression, qui n'existe pas côté API : les clés
+ * étrangères sont en cascade et un projet effacé emporterait ses prospects,
+ * leur historique et leurs rendez-vous. Distinct de « Terminé », qui dit
+ * qu'un projet est allé à son terme — un projet abandonné ne l'est pas.
+ */
+export type ProjectStatus =
+  | "active"
+  | "suspended"
+  | "completed"
+  | "archived";
 
 /**
  * Jeu restreint de couleurs d'étapes, fixé côté API.
@@ -133,6 +145,20 @@ export interface Prospect {
   notes: string | null;
   next_action_at: string | null;
   next_action_note: string | null;
+  /**
+   * Rangé hors du pipeline actif — distinct de « perdu », qui est un
+   * résultat commercial. Un prospect archivé sort des listes et de tous les
+   * taux, mais reste consultable par son adresse.
+   */
+  archived_at: string | null;
+  is_archived: boolean;
+  /**
+   * Données personnelles effacées (lot 9, contrat §8). La fiche reste, pour
+   * les statistiques : `full_name` vaut « Prospect effacé », `first_name`
+   * une chaîne vide, et plus aucune écriture n'est acceptée.
+   */
+  erased_at: string | null;
+  is_erased: boolean;
   converted_at: string | null;
   lost_at: string | null;
   /** Dérivée du journal côté API, jamais stockée. */
@@ -142,6 +168,19 @@ export interface Prospect {
   assigned_user?: User | null;
   created_at: string | null;
   updated_at: string | null;
+}
+
+/** Une autre fiche de la même personne, signalée à l'effacement (contrat §8). */
+export interface AutreFiche {
+  id: number;
+  project_id: number;
+  project: string;
+}
+
+/** Réponse de `POST /prospects/{id}/erase` (contrat §8). */
+export interface ErasureResult {
+  data: Prospect;
+  autres_fiches: AutreFiche[];
 }
 
 /**
@@ -168,7 +207,15 @@ export type ActivityType =
   | "note_added"
   | "imported"
   | "next_action_planned"
-  | "fields_updated";
+  | "fields_updated"
+  // Types que l'API envoyait déjà sans que le front les nomme (rendez-vous,
+  // lot 6 ; archivage, lot 9), et l'effacement du lot 9.
+  | "appointment_scheduled"
+  | "appointment_rescheduled"
+  | "appointment_status_changed"
+  | "archived"
+  | "unarchived"
+  | "erased";
 
 export interface ProspectActivity {
   id: number;

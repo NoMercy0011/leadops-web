@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cheminApiSur, estIdentifiantApi } from "@/lib/chemin-api";
 import { getSessionToken } from "@/lib/session";
 import type { ValidationErrors } from "@/lib/types";
 
@@ -56,6 +57,23 @@ interface ApiOptions extends Omit<RequestInit, "body"> {
 }
 
 /**
+ * Identifiant à interpoler dans un chemin d'API — revue du lot 9, faille F14.
+ *
+ * Les Server Actions reçoivent leurs identifiants du navigateur, sans type à
+ * l'exécution. La garde de chemin d'`apiFetch` refuse `..`, mais pas `5?` :
+ * `/prospects/5?/archive` partait en `PATCH /prospects/5`, une autre route.
+ * Chaque identifiant passe donc par ici avant d'entrer dans un chemin : seul
+ * un entier strictement positif est accepté.
+ */
+export function idApi(valeur: unknown): string {
+  if (!estIdentifiantApi(valeur)) {
+    throw new ApiError(400, "Identifiant invalide.");
+  }
+
+  return String(valeur);
+}
+
+/**
  * Unique point de sortie réseau vers l'API — invariant n°6 du CLAUDE.md.
  *
  * Le module est marqué `server-only` : toute tentative de l'importer depuis un
@@ -73,6 +91,13 @@ export async function apiFetch<T>(
     ...init
   }: ApiOptions = {},
 ): Promise<T> {
+  // Lot 9, faille F14 : un identifiant venu du navigateur ne doit pas pouvoir
+  // détourner l'appel vers une autre route (`/prospects/1/../../users`). Le
+  // refus part avant tout envoi, jeton compris.
+  if (!cheminApiSur(path)) {
+    throw new ApiError(400, "Requête invalide.");
+  }
+
   const token = anonymous ? null : await getSessionToken();
 
   const response = await fetch(`${BASE_URL}${path}`, {

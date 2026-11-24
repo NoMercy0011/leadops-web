@@ -1,6 +1,6 @@
 import "server-only";
 
-import { apiFetch } from "@/lib/api";
+import { apiFetch, idApi } from "@/lib/api";
 import type { Paginated } from "@/lib/admin";
 import type { Prospect, ProspectActivity, ProspectSummary } from "@/lib/types";
 
@@ -18,6 +18,8 @@ export interface ProspectFilters {
   /** `"none"` filtre les prospects non affectés. */
   assigned_user_id?: string;
   search?: string;
+  /** Ne retient que les prospects archivés. */
+  archived?: string;
   per_page?: number;
 }
 
@@ -33,8 +35,28 @@ function toQuery(filters: ProspectFilters): string {
   return query.size > 0 ? `?${query.toString()}` : "";
 }
 
+/**
+ * Effectifs derrière chaque valeur de filtre, pour les jetons de la barre.
+ *
+ * Chaque famille ignore son propre filtre et respecte les autres : une fois
+ * « Qualifié » retenu, les autres étapes annoncent toujours ce qu'on y
+ * trouverait, sans quoi on ne verrait pas où basculer.
+ *
+ * Les clés sont des identifiants en chaîne, plus `"none"` pour les prospects
+ * sans commercial. Une valeur absente vaut zéro : l'API ne renvoie que les
+ * groupes non vides.
+ */
+export interface ProspectFacets {
+  projects: Record<string, number>;
+  stages: Record<string, number>;
+  users: Record<string, number>;
+}
+
 /** La liste transporte son résumé agrégé, calculé par l'API sur le même filtre. */
-export type ProspectList = Paginated<Prospect> & { summary: ProspectSummary };
+export type ProspectList = Paginated<Prospect> & {
+  summary: ProspectSummary;
+  facets: ProspectFacets;
+};
 
 export async function listProspects(
   filters: ProspectFilters = {},
@@ -45,13 +67,13 @@ export async function listProspects(
 }
 
 export async function getProspect(id: number): Promise<Prospect> {
-  return apiFetch<Prospect>(`/prospects/${id}`);
+  return apiFetch<Prospect>(`/prospects/${idApi(id)}`);
 }
 
 export async function listActivities(
   prospectId: number,
 ): Promise<ProspectActivity[]> {
-  return apiFetch<ProspectActivity[]>(`/prospects/${prospectId}/activities`);
+  return apiFetch<ProspectActivity[]>(`/prospects/${idApi(prospectId)}/activities`);
 }
 
 /**

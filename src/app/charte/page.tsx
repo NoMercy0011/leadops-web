@@ -70,7 +70,7 @@ const MOUVEMENT = [
   { nom: "slow", valeur: "320 ms", usage: "Transition de page, glisser-déposer" },
 ];
 
-/** Registres d élévation. */
+/** Registres d'élévation. */
 const ELEVATION = [
   { nom: "plat", classe: "", usage: "Cartes, tableaux, sections" },
   { nom: "raised", classe: "shadow-raised", usage: "Carte survolée, élément saisi" },
@@ -229,7 +229,7 @@ export default function ChartePage() {
 
       <Section
         titre="États métier"
-        description="StatusBadge prend une tonalité, jamais un état métier. Les étapes de pipeline sont des lignes en base configurées par chaque client, et leur couleur vient de l API : un composant qui testerait le libellé « Converti » serait faux dès le premier client qui renomme ses étapes. Chaque aplat discret porte son propre jeton de texte, --x-subtle-foreground, distinct de --x-foreground qui est destiné à l aplat plein — à vérifier dans les deux thèmes avec le sélecteur ci-dessus."
+        description="StatusBadge prend une tonalité, jamais un état métier. Les étapes de pipeline sont des lignes en base configurées par chaque client, et leur couleur vient de l'API : un composant qui testerait le libellé « Converti » serait faux dès le premier client qui renomme ses étapes. Chaque aplat discret porte son propre jeton de texte, --x-subtle-foreground, distinct de --x-foreground qui est destiné à l'aplat plein — à vérifier dans les deux thèmes avec le sélecteur ci-dessus."
       >
         <div className="flex flex-wrap gap-2">
           {ETATS.map((e) => (
@@ -242,7 +242,7 @@ export default function ChartePage() {
 
       <Section
         titre="Champs de formulaire"
-        description="Un seul jeu de champs pour tout le produit — ChampTexte, ChampSelect, ChampZone — construits sur Field, que shadcn a substitué à form. L étiquette, l aide, l erreur et le câblage aria-describedby font partie du composant : ils ne s ajoutent pas après coup, et ne peuvent donc pas être oubliés. Le questionnaire dynamique du lot 5 générera ses onze types de questions depuis ce registre."
+        description="Un seul jeu de champs pour tout le produit — ChampTexte, ChampSelect, ChampZone — construits sur Field, que shadcn a substitué à form. L'étiquette, l'aide, l'erreur et le câblage aria-describedby font partie du composant : ils ne s'ajoutent pas après coup, et ne peuvent donc pas être oubliés. Le questionnaire dynamique du lot 5 générera ses onze types de questions depuis ce registre."
       >
         <Card className="max-w-md">
           <CardHeader>
@@ -266,7 +266,7 @@ export default function ChartePage() {
               <ChampSelect
                 id="charte-source"
                 label="Source"
-                aide="La liste déroulante est native : sa valeur doit arriver dans le FormData d une Server Action."
+                aide="La liste déroulante est native : sa valeur doit arriver dans le FormData d'une Server Action."
               >
                 <option>Salon</option>
                 <option>Recommandation</option>

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { apiFetch } from "@/lib/api";
+import { apiFetch, idApi } from "@/lib/api";
 import type { Appointment } from "@/lib/types";
 
 /**
@@ -42,5 +42,5 @@ export async function listAppointments(
 }
 
 export async function getAppointment(id: number): Promise<Appointment> {
-  return apiFetch<Appointment>(`/appointments/${id}`);
+  return apiFetch<Appointment>(`/appointments/${idApi(id)}`);
 }

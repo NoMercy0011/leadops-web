@@ -1,45 +1,36 @@
-"use client";
-
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
-
-import { NativeSelect } from "@/components/form-fields";
+import { FamilleFiltre } from "@/components/filtres";
 import type { Project } from "@/lib/types";
 
 /**
  * Choix du projet affiché.
  *
  * Le kanban porte sur un seul projet, les étapes lui appartenant. Ce n'est pas
- * un filtre parmi d'autres mais le cadre de l'écran : d'où un sélecteur dans
- * l'en-tête plutôt qu'une barre de filtres.
+ * un filtre parmi d'autres mais le cadre de l'écran : les jetons vivent donc
+ * dans l'en-tête, sans la carte qui entoure les barres de filtres ailleurs.
+ *
+ * Pas de choix « Tous » ici, contrairement aux autres familles : un kanban sans
+ * projet n'aurait pas de colonnes, les étapes étant propres à chaque projet.
  */
 export function ProjectPicker({
   projets,
   actif,
+  parametres,
 }: {
   projets: Project[];
   actif: number;
+  parametres: URLSearchParams;
 }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-
   return (
-    <NativeSelect
-      aria-label="Projet affiché"
-      className="w-auto min-w-44"
-      value={actif}
-      disabled={pending}
-      onChange={(e) =>
-        startTransition(() =>
-          router.replace(`/prospects/kanban?project_id=${e.target.value}`),
-        )
-      }
-    >
-      {projets.map((projet) => (
-        <option key={projet.id} value={projet.id}>
-          {projet.name}
-        </option>
-      ))}
-    </NativeSelect>
+    <FamilleFiltre
+      libelle="Projet"
+      parametre="project_id"
+      options={projets.map((projet) => ({
+        valeur: String(projet.id),
+        libelle: projet.name,
+      }))}
+      valeurActive={String(actif)}
+      base="/prospects/kanban"
+      parametres={parametres}
+    />
   );
 }

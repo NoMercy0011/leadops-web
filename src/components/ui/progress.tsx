@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Progress as ProgressPrimitive } from "radix-ui"
+import * as React from "react";
+import { Progress as ProgressPrimitive } from "radix-ui";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 function Progress({
   className,
@@ -24,8 +24,15 @@ function Progress({
       // À reporter si un `shadcn add progress` réécrit ce fichier.
       value={value}
       className={cn(
-        "relative flex h-1 w-full items-center overflow-x-hidden rounded-full bg-muted",
-        className
+        // Hauteur portée à 12px (`h-3`), pour que toutes les barres du produit
+        // s'accordent : jauges de consommation, qualification, répartition par
+        // étape, santé du pipeline, comparaison par variante. Le composant
+        // livré est à `h-1`.
+        //
+        // À reporter, comme le `value` ci-dessus, si un `shadcn add progress`
+        // réécrit ce fichier.
+        "relative flex h-3 w-full items-center overflow-x-hidden rounded-full bg-muted",
+        className,
       )}
       {...props}
     >
@@ -35,7 +42,7 @@ function Progress({
         style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
       />
     </ProgressPrimitive.Root>
-  )
+  );
 }
 
-export { Progress }
+export { Progress };

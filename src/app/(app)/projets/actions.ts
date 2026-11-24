@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { ApiError, apiFetch } from "@/lib/api";
-import type { StageColor } from "@/lib/types";
+import { ApiError, apiFetch, idApi } from "@/lib/api";
+import type { ProjectStatus, StageColor } from "@/lib/types";
 
 const BASE_PATH = "/projets";
 
@@ -12,6 +12,8 @@ export interface ActionState {
   message?: string;
   success?: string;
   fieldErrors?: Record<string, string>;
+  /** Code stable de l'API : l'écran distingue les refus par lui (revue du lot 9). */
+  code?: string;
 }
 
 /**
@@ -24,17 +26,31 @@ export interface ActionState {
 function toState(error: unknown): ActionState {
   if (error instanceof ApiError) {
     if (error.errors) {
-      return {
-        fieldErrors: Object.fromEntries(
-          Object.entries(error.errors).map(([champ, messages]) => [
-            champ,
-            messages[0],
-          ]),
-        ),
-      };
+      const fieldErrors = Object.fromEntries(
+        Object.entries(error.errors).map(([champ, messages]) => [
+          champ,
+          messages[0],
+        ]),
+      );
+
+      // Le premier message de champ sert aussi de message général : les
+      // commandes sans formulaire restaient muettes (revue du lot 9, F13).
+      return { fieldErrors, message: Object.values(fieldErrors)[0], code: error.code };
     }
 
-    return { message: error.message };
+    // Codes métier — plafond atteint, écriture bloquée, lecture seule : le
+    // message de l'API dit quoi faire, il passe tel quel.
+    if (error.code && error.code !== "auth.forbidden") {
+      return { message: error.message, code: error.code };
+    }
+
+    // Refus de droit ou projet introuvable : le message brut de Laravel cite
+    // une classe Eloquent, ou il est en anglais (revue du lot 9).
+    if ([403, 404].includes(error.status)) {
+      return { message: "Ce projet n'est plus accessible.", code: error.code };
+    }
+
+    return { message: error.message, code: error.code };
   }
 
   return { message: "Le service est momentanément indisponible." };
@@ -86,6 +102,98 @@ export async function createProject(
   return { success: `Le projet « ${parsed.data.name} » a été créé avec son pipeline.` };
 }
 
+/**
+ * Modification d'un projet.
+ *
+ * Le statut n'y figure pas : il a son propre point d'entrée, parce que changer
+ * un projet d'état est un geste à conséquence — un projet qui n'est plus actif
+ * refuse les nouveaux prospects — alors que corriger un libellé n'en a aucune.
+ * Les mêler dans un formulaire ferait passer le premier pour le second.
+ */
+export async function updateProject(
+  projectId: number,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const brut = Object.fromEntries(formData);
+
+  const parsed = projectSchema.safeParse({
+    ...brut,
+    // Un <select> vide renvoie une chaîne vide, que `coerce.number`
+    // convertirait en 0 — un identifiant invalide.
+    variant_id: brut.variant_id === "" ? undefined : brut.variant_id,
+  });
+
+  if (!parsed.success) {
+    const flat = z.flattenError(parsed.error);
+
+    return {
+      fieldErrors: Object.fromEntries(
+        Object.entries(flat.fieldErrors).map(([champ, messages]) => [
+          champ,
+          messages?.[0] ?? "",
+        ]),
+      ),
+    };
+  }
+
+  try {
+    await apiFetch(`/projects/${idApi(projectId)}`, {
+      method: "PATCH",
+      // Les champs vidés partent à `null` et non omis : sans cela, effacer une
+      // description ne l'effacerait jamais, la règle `sometimes` de Laravel
+      // ignorant les clés absentes.
+      body: {
+        ...parsed.data,
+        product: parsed.data.product || null,
+        target: parsed.data.target || null,
+        description: parsed.data.description || null,
+        variant_id: parsed.data.variant_id ?? null,
+      },
+    });
+  } catch (error) {
+    return toState(error);
+  }
+
+  revalidatePath(BASE_PATH, "layout");
+
+  return { success: "Projet mis à jour." };
+}
+
+/**
+ * Changement d'état d'un projet.
+ *
+ * Il n'existe pas de suppression, côté API comme ici : les clés étrangères
+ * sont en cascade et un projet effacé emporterait ses prospects, leur journal
+ * d'activités et leurs rendez-vous, sans retour possible. « Archivé » est le
+ * geste correspondant — il sort le projet des listes sans rien détruire, et se
+ * défait.
+ */
+export async function changeProjectStatus(
+  projectId: number,
+  statut: ProjectStatus,
+): Promise<ActionState> {
+  try {
+    await apiFetch(`/projects/${idApi(projectId)}`, {
+      method: "PATCH",
+      body: { status: statut },
+    });
+  } catch (error) {
+    return toState(error);
+  }
+
+  revalidatePath(BASE_PATH, "layout");
+
+  const messages: Record<ProjectStatus, string> = {
+    active: "Projet réactivé : il accepte de nouveau des prospects.",
+    suspended: "Projet suspendu : les données restent consultables.",
+    completed: "Projet marqué terminé.",
+    archived: "Projet archivé : il quitte la liste, rien n'est supprimé.",
+  };
+
+  return { success: messages[statut] };
+}
+
 export async function addStage(
   projectId: number,
   formData: FormData,
@@ -97,7 +205,7 @@ export async function addStage(
   }
 
   try {
-    await apiFetch(`/projects/${projectId}/stages`, {
+    await apiFetch(`/projects/${idApi(projectId)}/stages`, {
       method: "POST",
       body: {
         name: nom,
@@ -108,7 +216,10 @@ export async function addStage(
     return toState(error);
   }
 
-  revalidatePath(`${BASE_PATH}/${projectId}`);
+  // Tous les onglets de la fiche (lot 9) : un chemin littéral ne
+  // rafraîchit qu'une page, et les commandes partent désormais de
+  // /projets/[id]/reglages et /projets/[id]/prospects.
+  revalidatePath("/projets/[id]", "layout");
 
   return { success: `Étape « ${nom} » ajoutée.` };
 }
@@ -120,7 +231,7 @@ export async function reorderStages(
   try {
     // L'API exige une permutation exacte : un sous-ensemble laisserait des
     // étapes sur une position obsolète, donc un ordre d'affichage faux.
-    await apiFetch(`/projects/${projectId}/stages/reorder`, {
+    await apiFetch(`/projects/${idApi(projectId)}/stages/reorder`, {
       method: "PATCH",
       body: { stages: stageIds },
     });
@@ -128,7 +239,10 @@ export async function reorderStages(
     return toState(error);
   }
 
-  revalidatePath(`${BASE_PATH}/${projectId}`);
+  // Tous les onglets de la fiche (lot 9) : un chemin littéral ne
+  // rafraîchit qu'une page, et les commandes partent désormais de
+  // /projets/[id]/reglages et /projets/[id]/prospects.
+  revalidatePath("/projets/[id]", "layout");
 
   return { success: "Pipeline réordonné." };
 }
@@ -138,12 +252,15 @@ export async function deleteStage(
   stageId: number,
 ): Promise<ActionState> {
   try {
-    await apiFetch(`/stages/${stageId}`, { method: "DELETE" });
+    await apiFetch(`/stages/${idApi(stageId)}`, { method: "DELETE" });
   } catch (error) {
     return toState(error);
   }
 
-  revalidatePath(`${BASE_PATH}/${projectId}`);
+  // Tous les onglets de la fiche (lot 9) : un chemin littéral ne
+  // rafraîchit qu'une page, et les commandes partent désormais de
+  // /projets/[id]/reglages et /projets/[id]/prospects.
+  revalidatePath("/projets/[id]", "layout");
 
   return { success: "Étape supprimée." };
 }
@@ -155,7 +272,7 @@ export async function syncMembers(
   try {
     // Remplacement complet et non ajout : l'écran présente une liste à cocher,
     // et `sync` traduit exactement ce que l'utilisateur voit.
-    await apiFetch(`/projects/${projectId}/members`, {
+    await apiFetch(`/projects/${idApi(projectId)}/members`, {
       method: "PUT",
       body: { member_ids: memberIds },
     });
@@ -163,7 +280,10 @@ export async function syncMembers(
     return toState(error);
   }
 
-  revalidatePath(`${BASE_PATH}/${projectId}`);
+  // Tous les onglets de la fiche (lot 9) : un chemin littéral ne
+  // rafraîchit qu'une page, et les commandes partent désormais de
+  // /projets/[id]/reglages et /projets/[id]/prospects.
+  revalidatePath("/projets/[id]", "layout");
 
   return { success: "Équipe mise à jour." };
 }
@@ -200,7 +320,7 @@ export async function deleteVariant(variantId: number): Promise<ActionState> {
     // L'API refuse la suppression d'une variante encore utilisée : la laisser
     // passer détacherait silencieusement les projets et ferait disparaître un
     // axe de reporting.
-    await apiFetch(`/variants/${variantId}`, { method: "DELETE" });
+    await apiFetch(`/variants/${idApi(variantId)}`, { method: "DELETE" });
   } catch (error) {
     return toState(error);
   }

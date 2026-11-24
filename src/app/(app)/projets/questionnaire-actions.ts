@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { ApiError, apiFetch } from "@/lib/api";
+import { ApiError, apiFetch, idApi } from "@/lib/api";
 import type { QuestionType } from "@/lib/types";
 
 export interface ActionState {
@@ -57,7 +57,7 @@ export async function addQuestion(
   }
 
   try {
-    await apiFetch(`/projects/${projectId}/questions`, {
+    await apiFetch(`/projects/${idApi(projectId)}/questions`, {
       method: "POST",
       body: {
         label,
@@ -74,7 +74,10 @@ export async function addQuestion(
     return toState(error);
   }
 
-  revalidatePath(`/projets/${projectId}`);
+  // Tous les onglets de la fiche (lot 9) : un chemin littéral ne
+  // rafraîchit qu'une page, et les commandes partent désormais de
+  // /projets/[id]/reglages et /projets/[id]/prospects.
+  revalidatePath("/projets/[id]", "layout");
 
   return { success: `Question « ${label} » ajoutée.` };
 }
@@ -108,7 +111,7 @@ export async function updateQuestion(
   const options = decouperOptions(brutOptions);
 
   try {
-    await apiFetch(`/questions/${questionId}`, {
+    await apiFetch(`/questions/${idApi(questionId)}`, {
       method: "PATCH",
       body: {
         label,
@@ -124,7 +127,10 @@ export async function updateQuestion(
     return toState(error);
   }
 
-  revalidatePath(`/projets/${projectId}`);
+  // Tous les onglets de la fiche (lot 9) : un chemin littéral ne
+  // rafraîchit qu'une page, et les commandes partent désormais de
+  // /projets/[id]/reglages et /projets/[id]/prospects.
+  revalidatePath("/projets/[id]", "layout");
 
   return { success: `Question « ${label} » mise à jour.` };
 }
@@ -134,7 +140,7 @@ export async function reorderQuestions(
   questionIds: number[],
 ): Promise<ActionState> {
   try {
-    await apiFetch(`/projects/${projectId}/questions/reorder`, {
+    await apiFetch(`/projects/${idApi(projectId)}/questions/reorder`, {
       method: "PATCH",
       body: { questions: questionIds },
     });
@@ -142,7 +148,10 @@ export async function reorderQuestions(
     return toState(error);
   }
 
-  revalidatePath(`/projets/${projectId}`);
+  // Tous les onglets de la fiche (lot 9) : un chemin littéral ne
+  // rafraîchit qu'une page, et les commandes partent désormais de
+  // /projets/[id]/reglages et /projets/[id]/prospects.
+  revalidatePath("/projets/[id]", "layout");
 
   return { success: "Questionnaire réordonné." };
 }
@@ -154,12 +163,15 @@ export async function deleteQuestion(
   try {
     // Suppression douce côté API : la question quitte le formulaire, les
     // réponses déjà collectées restent lisibles sur les fiches.
-    await apiFetch(`/questions/${questionId}`, { method: "DELETE" });
+    await apiFetch(`/questions/${idApi(questionId)}`, { method: "DELETE" });
   } catch (error) {
     return toState(error);
   }
 
-  revalidatePath(`/projets/${projectId}`);
+  // Tous les onglets de la fiche (lot 9) : un chemin littéral ne
+  // rafraîchit qu'une page, et les commandes partent désormais de
+  // /projets/[id]/reglages et /projets/[id]/prospects.
+  revalidatePath("/projets/[id]", "layout");
 
   return { success: "Question retirée du formulaire." };
 }

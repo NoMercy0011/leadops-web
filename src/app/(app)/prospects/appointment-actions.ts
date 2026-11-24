@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { ApiError, apiFetch } from "@/lib/api";
+import { ApiError, apiFetch, idApi } from "@/lib/api";
 import type { AppointmentStatus } from "@/lib/types";
 
 export interface ActionState {
@@ -100,7 +100,7 @@ export async function updateAppointment(
   const notes = String(formData.get("notes") ?? "").trim();
 
   try {
-    await apiFetch(`/appointments/${appointmentId}`, {
+    await apiFetch(`/appointments/${idApi(appointmentId)}`, {
       method: "PATCH",
       body: {
         // Même conversion qu'à la planification : la valeur d'un
@@ -132,7 +132,7 @@ export async function changeAppointmentStatus(
   statut: AppointmentStatus,
 ): Promise<ActionState> {
   try {
-    await apiFetch(`/appointments/${appointmentId}`, {
+    await apiFetch(`/appointments/${idApi(appointmentId)}`, {
       method: "PATCH",
       body: { status: statut },
     });
@@ -151,7 +151,7 @@ export async function deleteAppointment(
   appointmentId: number,
 ): Promise<ActionState> {
   try {
-    await apiFetch(`/appointments/${appointmentId}`, { method: "DELETE" });
+    await apiFetch(`/appointments/${idApi(appointmentId)}`, { method: "DELETE" });
   } catch (error) {
     return toState(error);
   }

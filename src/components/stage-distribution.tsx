@@ -100,7 +100,7 @@ export function StageDistribution({ etapes }: { etapes: StageSlice[] }) {
               <td>
                 <div className="flex items-center gap-2">
                   <div
-                    className="bg-muted h-5 flex-1 overflow-hidden rounded-sm"
+                    className="bg-muted h-3 flex-1 overflow-hidden rounded-sm"
                     // La part du total complète la lecture : la barre compare
                     // les étapes entre elles, le pourcentage les situe dans
                     // l'ensemble.

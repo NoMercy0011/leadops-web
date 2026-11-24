@@ -24,10 +24,17 @@ import type { ProspectSummary } from "@/lib/types";
 export function ProspectSummaryStrip({
   resume,
   filtres,
+  base = "/prospects",
 }: {
   resume: ProspectSummary;
   /** Filtres courants, à conserver dans les liens des tuiles cliquables. */
   filtres: URLSearchParams;
+  /**
+   * Écran qui héberge la liste. La bande sert aussi l'onglet Prospects d'un
+   * projet, où les liens doivent rester dans le projet plutôt que renvoyer
+   * vers la liste globale — ce qui perdrait le contexte au premier clic.
+   */
+  base?: string;
 }) {
   function lienVers(parametres: Record<string, string>): string {
     const query = new URLSearchParams(filtres);
@@ -36,7 +43,7 @@ export function ProspectSummaryStrip({
       query.set(cle, valeur);
     }
 
-    return `/prospects?${query.toString()}`;
+    return `${base}?${query.toString()}`;
   }
 
   return (

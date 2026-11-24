@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { ApiError, apiFetch } from "@/lib/api";
+import { ApiError, apiFetch, idApi } from "@/lib/api";
 
 const BASE_PATH = "/back-office/entreprises";
 
@@ -92,7 +92,7 @@ export async function suspendCompany(
   companyId: number,
 ): Promise<ActionState> {
   try {
-    await apiFetch(`/admin/companies/${companyId}/suspend`, { method: "POST" });
+    await apiFetch(`/admin/companies/${idApi(companyId)}/suspend`, { method: "POST" });
   } catch (error) {
     return toState(error);
   }
@@ -107,7 +107,7 @@ export async function activateCompany(
   companyId: number,
 ): Promise<ActionState> {
   try {
-    await apiFetch(`/admin/companies/${companyId}/activate`, { method: "POST" });
+    await apiFetch(`/admin/companies/${idApi(companyId)}/activate`, { method: "POST" });
   } catch (error) {
     return toState(error);
   }
@@ -123,7 +123,7 @@ export async function changePlan(
   planId: number,
 ): Promise<ActionState> {
   try {
-    await apiFetch(`/admin/companies/${companyId}/subscription`, {
+    await apiFetch(`/admin/companies/${idApi(companyId)}/subscription`, {
       method: "PATCH",
       body: { plan_id: planId },
     });

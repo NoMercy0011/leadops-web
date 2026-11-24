@@ -48,8 +48,23 @@ function SubmitButton() {
  * le rapport d'import est le résultat utile, et le refermer ferait disparaître
  * la liste des lignes rejetées — donc la seule information permettant de
  * corriger le fichier.
+ *
+ * Deux points d'appel, une seule boîte. Depuis la liste des prospects, le
+ * projet de destination se choisit ; depuis une fiche projet, il est connu et
+ * le sélecteur disparaît. Le dupliquer en deux composants ferait diverger le
+ * rapport d'erreurs, qui est la partie délicate.
  */
-export function ImportDialog({ projets }: { projets: Project[] }) {
+export function ImportDialog({
+  projets,
+  projet,
+  taille = "default",
+}: {
+  /** Destinations possibles. Ignoré si `projet` est fourni. */
+  projets?: Project[];
+  /** Destination imposée : le sélecteur laisse place à un champ caché. */
+  projet?: Project;
+  taille?: "default" | "sm";
+}) {
   const [open, setOpen] = useState(false);
 
   const [state, formAction] = useActionState(
@@ -69,7 +84,7 @@ export function ImportDialog({ projets }: { projets: Project[] }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">
+        <Button variant="outline" size={taille === "sm" ? "sm" : "default"}>
           <Upload className="size-4" aria-hidden />
           Importer
         </Button>
@@ -81,22 +96,30 @@ export function ImportDialog({ projets }: { projets: Project[] }) {
             <DialogTitle>Importer des prospects</DialogTitle>
             <DialogDescription>
               Fichier CSV, séparé par des virgules ou des points-virgules.
+              {projet ? ` Destination : ${projet.name}.` : ""}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <ChampSelect
-              id="project_id"
-              label="Projet de destination"
-              required
-              defaultValue={projets[0]?.id}
-            >
-              {projets.map((projet) => (
-                <option key={projet.id} value={projet.id}>
-                  {projet.name}
-                </option>
-              ))}
-            </ChampSelect>
+            {projet ? (
+              // Le projet est déjà celui de la page : un sélecteur à une seule
+              // entrée est un champ de plus à lire, et une occasion de se
+              // tromper de destination.
+              <input type="hidden" name="project_id" value={projet.id} />
+            ) : (
+              <ChampSelect
+                id="project_id"
+                label="Projet de destination"
+                required
+                defaultValue={projets?.[0]?.id}
+              >
+                {(projets ?? []).map((destination) => (
+                  <option key={destination.id} value={destination.id}>
+                    {destination.name}
+                  </option>
+                ))}
+              </ChampSelect>
+            )}
 
             <Field>
               <FieldLabel htmlFor="file">Fichier</FieldLabel>

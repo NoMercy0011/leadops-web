@@ -1,0 +1,110 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  CalendarDays,
+  LayoutDashboard,
+  Settings2,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
+interface Onglet {
+  libelle: string;
+  suffixe: string;
+  icone: LucideIcon;
+}
+
+/**
+ * Les onglets sont définis ici, dans le composant client, et non dans le
+ * layout serveur qui les afficherait.
+ *
+ * Ce n'est pas un choix d'organisation : une icône de lucide est une
+ * *fonction*, et React refuse de faire passer une fonction d'un composant
+ * serveur à un composant client — rien ne saurait la sérialiser. Le layout
+ * échouait donc à chaque rendu, et la page entière tombait sur sa frontière
+ * d'erreur. Le serveur ne transmet plus que des données : l'identifiant du
+ * projet.
+ *
+ * Lot 9 : l'onglet « Back office » devient « Réglages » (décision P1) —
+ * « back-office » désigne, dans l'esquisse, l'espace du Super Admin. L'onglet
+ * Abonnement quitte la fiche pour Paramètres (décision P2) : tous les rôles
+ * voient désormais les mêmes onglets.
+ */
+const ONGLETS: Onglet[] = [
+  { libelle: "Tableau de bord", suffixe: "", icone: LayoutDashboard },
+  { libelle: "Prospects", suffixe: "/prospects", icone: Users },
+  { libelle: "Rendez-vous", suffixe: "/rendez-vous", icone: CalendarDays },
+  { libelle: "Réglages", suffixe: "/reglages", icone: Settings2 },
+];
+
+/**
+ * Sections de la fiche projet.
+ *
+ * **Des liens, pas un `role="tablist"`.** Le réflexe est de reprendre les
+ * attributs ARIA d'onglets, mais ils décrivent un composant qui affiche et
+ * masque des panneaux déjà présents dans la page. Ici chaque section est une
+ * URL : elle se partage, se met en favori, revient avec le bouton Précédent,
+ * et son contenu n'est chargé qu'à la demande. Annoncer un `tablist` ferait
+ * attendre à un lecteur d'écran une navigation aux flèches et un `tabpanel`
+ * associé, dont rien n'existe. La sémantique juste est `nav` + `aria-current`.
+ *
+ * Volontairement sans compteurs ni pastilles : les afficher obligerait le
+ * layout à interroger l'agenda et l'audit de qualité à *chaque* section, pour
+ * répéter des nombres que le tableau de bord donne en grand. Une barre de
+ * navigation indique où aller, pas ce qui s'y trouve.
+ */
+export function OngletsProjet({ projectId }: { projectId: number }) {
+  const chemin = usePathname();
+  const base = `/projets/${projectId}`;
+
+  return (
+    // Le filet appartient à la bande d'en-tête, pas à la navigation : les deux
+    // partagent la même ligne, et deux bordures superposées s'y verraient.
+    <nav aria-label="Sections du projet" className="min-w-0">
+      {/* `-mb-px` fait mordre le soulignement de l'onglet actif sur le filet de
+          la bande, au lieu de flotter un pixel au-dessus. */}
+      <ul className="-mb-px flex gap-1 overflow-x-auto">
+        {ONGLETS.map((onglet) => {
+          const href = `${base}${onglet.suffixe}`;
+
+          // Le tableau de bord est le seul segment sans suffixe : un
+          // `startsWith` le rendrait actif sur toutes les autres sections.
+          const actif =
+            onglet.suffixe === "" ? chemin === href : chemin.startsWith(href);
+
+          const Icone = onglet.icone;
+
+          return (
+            <li key={onglet.suffixe}>
+              <Link
+                href={href}
+                aria-current={actif ? "page" : undefined}
+                className={cn(
+                  // Resserré : la barre est le cadre, pas le contenu. Le texte
+                  // reste en `text-sm` — le rétrécir aussi rendrait la
+                  // navigation moins lisible que ce qu'elle encadre, ce qui
+                  // n'économiserait que quelques pixels pour un vrai coût.
+                  "duration-(--duration-fast) ease-brand flex items-center gap-1.5 border-b-2 px-2.5 py-1.5 text-sm whitespace-nowrap transition-colors",
+                  "focus-visible:ring-ring rounded-t-sm focus-visible:ring-2 focus-visible:outline-none",
+                  actif
+                    ? "border-primary text-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground border-transparent",
+                )}
+              >
+                <Icone
+                  className={cn("size-3.5", actif ? "text-primary" : undefined)}
+                  aria-hidden
+                />
+                {onglet.libelle}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}

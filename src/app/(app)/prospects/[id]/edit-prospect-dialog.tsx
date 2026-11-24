@@ -2,12 +2,26 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, Pencil, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  Eraser,
+  LoaderCircle,
+  Pencil,
+  TriangleAlert,
+} from "lucide-react";
 import { toast } from "sonner";
 
-import { deleteProspect, updateProspect, type ActionState } from "../actions";
+import {
+  archiveProspect,
+  eraseProspect,
+  updateProspect,
+  type ActionState,
+} from "../actions";
 import { ChampTexte } from "@/components/form-fields";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,7 +45,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { FieldGroup } from "@/components/ui/field";
-import type { Prospect } from "@/lib/types";
+import type { AutreFiche, Prospect } from "@/lib/types";
 
 const INITIAL: ActionState = {};
 
@@ -57,7 +71,21 @@ function SubmitButton() {
  * premier n'est pas modifiable (il porte le pipeline et le questionnaire), la
  * seconde a son propre sélecteur, qui écrit au journal.
  */
-export function EditProspectDialog({ prospect }: { prospect: Prospect }) {
+export function EditProspectDialog({
+  prospect,
+  compact = false,
+  lectureSeule = false,
+}: {
+  prospect: Prospect;
+  /**
+   * Déclencheur réduit à son icône, pour une cellule de tableau. Le libellé
+   * passe alors dans `aria-label` et nomme le prospect : dans une liste de
+   * trente lignes, « Modifier » répété trente fois ne dit pas quoi.
+   */
+  compact?: boolean;
+  /** Archivé (lot 9) : le bouton reste visible et désactivé — décision P7. */
+  lectureSeule?: boolean;
+}) {
   const [open, setOpen] = useState(false);
 
   const [state, formAction] = useActionState(
@@ -80,10 +108,22 @@ export function EditProspectDialog({ prospect }: { prospect: Prospect }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Pencil className="size-4" aria-hidden />
-          Modifier
-        </Button>
+        {compact ? (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="text-muted-foreground hover:text-foreground"
+            aria-label={`Modifier ${prospect.full_name}`}
+            disabled={lectureSeule}
+          >
+            <Pencil className="size-4" aria-hidden />
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" disabled={lectureSeule}>
+            <Pencil className="size-4" aria-hidden />
+            Modifier
+          </Button>
+        )}
       </DialogTrigger>
 
       <DialogContent className="shadow-dialog sm:max-w-lg">
@@ -175,57 +215,139 @@ export function EditProspectDialog({ prospect }: { prospect: Prospect }) {
 }
 
 /**
- * Suppression définitive, réservée à l'Admin Client par la policy.
+ * Range un prospect hors du pipeline actif, ou l'y ramène.
  *
- * Supprimer un prospect emporte son journal d'activités, dont dépendent les
- * KPIs de durée de cycle — et ces données ne se reconstituent pas. D'où la
- * confirmation, et un libellé qui nomme la conséquence plutôt que l'action.
+ * **Distinct de « Perdu ».** Un contact injoignable depuis six mois n'a pas
+ * été perdu, il n'a jamais commencé — le compter comme perdu ferait mentir le
+ * taux de perte, qui est un résultat commercial et non un classement.
+ *
+ * Le motif est demandé mais facultatif : six mois plus tard, « injoignable »
+ * et « doublon de la ligne 42 » n'appellent pas la même décision si le dossier
+ * ressort. L'exiger transformerait un geste de rangement en formulaire, et il
+ * serait rempli n'importe comment.
  */
-export function DeleteProspectButton({ prospect }: { prospect: Prospect }) {
-  const router = useRouter();
+export function ArchiveProspectButton({
+  prospect,
+  compact = false,
+  lectureSeule = false,
+}: {
+  prospect: Prospect;
+  /** Réduit au pictogramme, pour une cellule de tableau. */
+  compact?: boolean;
+  /** Prospect d'un projet archivé : visible, désactivé (décisions P7 et R2). */
+  lectureSeule?: boolean;
+}) {
   const [pending, setPending] = useState(false);
+  const [motif, setMotif] = useState("");
+  const [open, setOpen] = useState(false);
+  const [erreurMotif, setErreurMotif] = useState<string | null>(null);
 
-  async function supprimer() {
+  async function basculer(archive: boolean) {
     setPending(true);
-    const resultat = await deleteProspect(prospect.id);
+    setErreurMotif(null);
+    const resultat = await archiveProspect(prospect.id, archive, motif);
+    setPending(false);
 
-    if (resultat.success) {
-      toast.success(resultat.success);
-      // La fiche n'existe plus : y rester renverrait un 404 au premier
-      // rafraîchissement.
-      router.push("/prospects");
+    // Une erreur sur le motif reste sous le champ, la boîte ouverte et la
+    // saisie conservée (revue du lot 9, F13) : la fermer effaçait le texte.
+    if (resultat.fieldErrors?.motif) {
+      setErreurMotif(resultat.fieldErrors.motif);
       return;
     }
 
-    setPending(false);
+    if (resultat.success) {
+      setOpen(false);
+      setMotif("");
+      toast.success(resultat.success);
+      return;
+    }
+
     if (resultat.message) toast.error(resultat.message);
   }
 
+  // Désarchiver ne demande pas confirmation : le geste est anodin et se
+  // défait aussitôt. Archiver en demande une, parce que le dossier quitte les
+  // listes et qu'il faut savoir où le retrouver.
+  if (prospect.is_archived) {
+    return (
+      <Button
+        variant={compact ? "ghost" : "outline"}
+        size={compact ? "icon-sm" : "sm"}
+        disabled={pending || lectureSeule}
+        aria-busy={pending}
+        aria-label={compact ? `Désarchiver ${prospect.full_name}` : undefined}
+        className={
+          compact ? "text-muted-foreground hover:text-foreground" : undefined
+        }
+        onClick={() => void basculer(false)}
+      >
+        {pending ? (
+          <LoaderCircle className="size-4 animate-spin" aria-hidden />
+        ) : (
+          <ArchiveRestore className="size-4" aria-hidden />
+        )}
+        {compact ? null : "Désarchiver"}
+      </Button>
+    );
+  }
+
   return (
-    <AlertDialog>
+    <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
         <Button
           variant="ghost"
-          size="sm"
-          className="text-muted-foreground hover:text-destructive duration-(--duration-fast) ease-brand transition-colors"
+          size={compact ? "icon-sm" : "sm"}
+          className="text-muted-foreground hover:text-foreground duration-(--duration-fast) ease-brand transition-colors"
+          disabled={pending || lectureSeule}
+          aria-label={compact ? `Archiver ${prospect.full_name}` : undefined}
         >
-          <Trash2 className="size-4" aria-hidden />
-          Supprimer
+          <Archive className="size-4" aria-hidden />
+          {compact ? null : "Archiver"}
         </Button>
       </AlertDialogTrigger>
 
       <AlertDialogContent className="shadow-dialog">
         <AlertDialogHeader>
           <AlertDialogTitle>
-            Supprimer « {prospect.full_name} » ?
+            Archiver « {prospect.full_name} » ?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            La fiche, ses réponses de qualification et tout son historique
-            d&apos;interactions seront effacés. Les statistiques passées qui en
-            découlent ne pourront pas être reconstituées. Cette action est
-            irréversible.
+            Le prospect quitte les listes et sort de tous les taux — conversion,
+            qualification, perte. Rien n&apos;est supprimé : sa fiche et son
+            historique restent consultables, et l&apos;opération se défait.
+            Préférez «&nbsp;Perdu&nbsp;» si l&apos;affaire a réellement échoué.
           </AlertDialogDescription>
         </AlertDialogHeader>
+
+        <div className="space-y-2 py-1">
+          <label htmlFor="motif-archivage" className="text-sm font-medium">
+            Motif{" "}
+            <span className="text-muted-foreground font-normal">
+              facultatif
+            </span>
+          </label>
+          <Textarea
+            id="motif-archivage"
+            rows={2}
+            maxLength={255}
+            value={motif}
+            onChange={(event) => setMotif(event.target.value)}
+            placeholder="Injoignable depuis six mois."
+            aria-invalid={erreurMotif !== null}
+            aria-describedby="motif-archivage-aide"
+          />
+          {erreurMotif ? (
+            <p id="motif-archivage-aide" role="alert" className="text-destructive-subtle-foreground text-xs">
+              {erreurMotif}
+            </p>
+          ) : (
+            <p id="motif-archivage-aide" className="text-muted-foreground text-xs">
+              Conservé au journal du prospect : il aidera à décider si le
+              dossier ressort.
+            </p>
+          )}
+        </div>
+
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>Annuler</AlertDialogCancel>
           <AlertDialogAction
@@ -234,16 +356,225 @@ export function DeleteProspectButton({ prospect }: { prospect: Prospect }) {
               // Sans ceci, Radix referme la boîte et démonte le bouton avant
               // que l'action serveur ne parte.
               event.preventDefault();
-              void supprimer();
+              void basculer(true);
             }}
           >
-            {pending ? (
-              <LoaderCircle className="size-4 animate-spin" aria-hidden />
-            ) : null}
-            Supprimer définitivement
+            Archiver
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+  );
+}
+
+/**
+ * Effacement des données personnelles — écran S-10 de la planche du lot 9.
+ *
+ * **Ce n'est pas la façon de retirer un prospect du pipeline** — c'est
+ * l'archivage qui s'en charge, sans rien détruire. Cette action répond au
+ * droit à l'effacement (RGPD, art. 17) : elle **anonymise** la fiche. La
+ * fiche reste, sans rien qui désigne la personne, et les statistiques du
+ * projet restent justes. Réservée à l'Admin Client, irréversible.
+ *
+ * Les textes de cette boîte sont **provisoires**, à valider sur le plan
+ * juridique en fin de projet (hypothèse H-1 de la note du lot 9).
+ */
+export function EraseProspectButton({ prospect }: { prospect: Prospect }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+  // Le serveur ne renvoie cette liste qu'une fois : elle vit dans la boîte, et
+  // disparaît quand on la ferme (question ouverte de la planche, tranchée).
+  const [resultat, setResultat] = useState<ActionState | null>(null);
+
+  // La personne ne se nomme qu'avant l'effacement : la boîte de résultat est
+  // rendue après le rafraîchissement, quand `full_name` vaut déjà « Prospect
+  // effacé ».
+  const [nom] = useState(prospect.full_name);
+
+  async function effacer() {
+    setPending(true);
+    setErreur(null);
+    const reponse = await eraseProspect(prospect.id);
+    setPending(false);
+
+    if (reponse.success) {
+      // Pas de router.refresh() : l'action a déjà revalidé la fiche, qui se
+      // recharge sous la boîte ouverte.
+      setResultat(reponse);
+      return;
+    }
+
+    // Déjà effacée, depuis un autre onglet : on le dit dans la boîte, et la
+    // fiche se recharge en « Prospect effacé ».
+    if (reponse.code === "erasure.already_erased") {
+      router.refresh();
+    }
+
+    setErreur(reponse.message ?? "Le service est momentanément indisponible.");
+  }
+
+  function fermer(ouverte: boolean) {
+    setOpen(ouverte);
+    if (!ouverte) {
+      setResultat(null);
+      setErreur(null);
+    }
+  }
+
+  // Une fiche effacée n'a plus d'action : le bouton disparaît, sauf pendant
+  // que la boîte de résultat est ouverte — elle porte la seule occasion de
+  // voir les autres fiches de la personne.
+  if (prospect.is_erased && !open) {
+    return null;
+  }
+
+  return (
+    <AlertDialog open={open} onOpenChange={fermer}>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground hover:text-destructive duration-(--duration-fast) ease-brand transition-colors"
+        >
+          <Eraser className="size-4" aria-hidden />
+          Effacer les données personnelles
+        </Button>
+      </AlertDialogTrigger>
+
+      <AlertDialogContent className="shadow-dialog">
+        {resultat ? (
+          <ResultatEffacement autresFiches={resultat.autresFiches ?? []} />
+        ) : (
+          <>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Effacer les données personnelles de « {nom} » ?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                À utiliser pour répondre à une demande d&apos;effacement de cette
+                personne. Pour retirer un prospect du pipeline, archivez-le
+                plutôt : rien n&apos;est détruit et l&apos;opération se défait.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            {/* Aplat discret et jeton de texte assortis : `--destructive-subtle`
+                va avec `--destructive-subtle-foreground`, jamais avec le jeton
+                de l'aplat plein, invisible dessus en thème sombre. */}
+            <div className="border-destructive/30 bg-destructive-subtle text-destructive-subtle-foreground space-y-1 rounded-md border px-3 py-2 text-sm">
+              <p className="font-medium">Ce qui est effacé, définitivement</p>
+              <p className="leading-relaxed">
+                Les nom, prénom, société, téléphone, email, adresse et notes de
+                la fiche ; l&apos;objet de la prochaine relance ; les réponses
+                libres et les dates du questionnaire ; les notes et les lieux de
+                ses rendez-vous ; le contenu des notes de son historique.
+              </p>
+            </div>
+
+            <div className="space-y-3 text-sm">
+              <div className="space-y-1">
+                <p className="font-medium">
+                  Ce qui est gardé, sans rien qui la désigne
+                </p>
+                <p className="text-muted-foreground leading-relaxed">
+                  Le projet, l&apos;étape, le commercial, les dates et les étapes
+                  franchies (qualification, conversion, perte), les réponses à
+                  choix et les nombres. Les statistiques du projet restent
+                  justes.
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-medium">Ses autres fiches</p>
+                <p className="text-muted-foreground leading-relaxed">
+                  Si cette personne figure dans d&apos;autres projets de
+                  l&apos;entreprise, ces fiches ne sont pas effacées. Elles vous
+                  seront listées à la fin, pour que vous les traitiez une à une.
+                </p>
+              </div>
+            </div>
+
+            {erreur ? (
+              <p role="alert" className="text-destructive-subtle-foreground text-sm">
+                {erreur}
+              </p>
+            ) : null}
+
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={pending}>Annuler</AlertDialogCancel>
+              {/* Contour rouge (décision P9) : seul geste irréversible du
+                  produit, il ne ressemble à aucun autre bouton de
+                  confirmation. */}
+              <AlertDialogAction
+                disabled={pending}
+                className="border-destructive text-destructive-subtle-foreground hover:bg-destructive-subtle border bg-transparent"
+                onClick={(event) => {
+                  // Sans ceci, Radix referme la boîte et démonte le bouton
+                  // avant que l'action serveur ne parte.
+                  event.preventDefault();
+                  void effacer();
+                }}
+              >
+                {pending ? (
+                  <LoaderCircle className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  <Eraser className="size-4" aria-hidden />
+                )}
+                Effacer définitivement
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </>
+        )}
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+/** Boîte de résultat de l'effacement (S-10, « Résultat »). Texte provisoire (H-1). */
+function ResultatEffacement({ autresFiches }: { autresFiches: AutreFiche[] }) {
+  return (
+    <>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Données personnelles effacées</AlertDialogTitle>
+        <AlertDialogDescription>
+          La fiche s&apos;affiche désormais « Prospect effacé ». L&apos;effacement
+          est tracé au journal, avec votre nom et la date, sans donnée
+          personnelle.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+
+      {autresFiches.length > 0 ? (
+        <div className="border-warning/30 bg-warning-subtle text-warning-subtle-foreground space-y-2 rounded-md border px-3 py-2 text-sm">
+          <p className="flex items-center gap-2 font-medium">
+            <TriangleAlert className="size-4 shrink-0" aria-hidden />
+            {autresFiches.length === 1
+              ? "Cette personne a 1 autre fiche, qui n'a pas été effacée"
+              : `Cette personne a ${autresFiches.length} autres fiches, qui n'ont pas été effacées`}
+          </p>
+          <ul className="space-y-1">
+            {autresFiches.map((fiche) => (
+              <li key={fiche.id}>
+                {fiche.project} —{" "}
+                <Link href={`/prospects/${fiche.id}`} className="underline">
+                  ouvrir la fiche
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="leading-relaxed">
+            Ouvrez chacune pour l&apos;effacer si la demande la concerne aussi.
+            Cette liste ne s&apos;affichera plus une fois la boîte fermée.
+          </p>
+        </div>
+      ) : (
+        <p className="text-muted-foreground text-sm">
+          Aucune autre fiche de cette personne dans l&apos;entreprise.
+        </p>
+      )}
+
+      <AlertDialogFooter>
+        <AlertDialogCancel>Fermer</AlertDialogCancel>
+      </AlertDialogFooter>
+    </>
   );
 }
