@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/card";
 import { requireUser } from "@/lib/dal";
 import { formatDate } from "@/lib/format";
-import { listCompanyUsers, listProjects, listVariants } from "@/lib/projects";
+import { getOptionsFiltres } from "@/lib/options";
+import { listVariants } from "@/lib/projects";
 import { getReport } from "@/lib/reporting";
 
 export const metadata: Metadata = {
@@ -54,12 +55,14 @@ export default async function RapportsPage({
     ),
   );
 
-  const [rapport, projets, variantes, utilisateurs] = await Promise.all([
+  const [rapport, options, variantes] = await Promise.all([
     getReport(filtres),
-    listProjects(),
+    // Tout le périmètre, sans la borne de 25 des listes paginées (lot 10, R2).
+    getOptionsFiltres(),
     listVariants(),
-    listCompanyUsers(),
   ]);
+  const projets = { data: options.projects };
+  const utilisateurs = { data: options.users };
 
   const fuseau = rapport.period.timezone;
 

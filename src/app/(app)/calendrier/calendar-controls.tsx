@@ -78,8 +78,8 @@ export function CalendarControls({
   /** Libellé de la période affichée, déjà mis en forme par la page. */
   titre: string;
   fuseau?: string;
-  projets: Project[];
-  utilisateurs: User[];
+  projets: Pick<Project, "id" | "name">[];
+  utilisateurs: Pick<User, "id" | "name">[];
   parametres: URLSearchParams;
   /** Adresse de l'écran : le Calendrier, ou l'onglet Rendez-vous d'un projet (lot 9, P6). */
   base?: string;

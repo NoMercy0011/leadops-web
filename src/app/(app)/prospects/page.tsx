@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { lienExportProspects } from "@/lib/export-prospects";
+import { getOptionsFiltres } from "@/lib/options";
 import { requireUser } from "@/lib/dal";
 import { listProspects } from "@/lib/prospects";
 import { listCompanyUsers, listProjects } from "@/lib/projects";
@@ -45,6 +46,10 @@ export default async function ProspectsPage({
     // La liste des commerciaux ne sert qu'aux actions d'encadrement.
     encadrement ? listCompanyUsers() : Promise.resolve({ data: [], meta: { current_page: 1, last_page: 1, total: 0 } }),
   ]);
+  // Les filtres et la réaffectation lisent tout le périmètre, sans la borne de
+  // 25 des listes paginées (lot 10, R2) ; les boîtes de création et d'import
+  // gardent les projets complets.
+  const options = await getOptionsFiltres();
 
   const projetActif = projectId
     ? projets.data.find((p) => p.id === projectId)
@@ -119,8 +124,8 @@ export default async function ProspectsPage({
           />
 
           <ProspectFilters
-            projets={projets.data}
-            utilisateurs={utilisateurs.data}
+            projets={options.projects}
+            utilisateurs={encadrement ? options.users : []}
             etapes={projetActif?.stages ?? []}
             facettes={prospects.facets}
             parametres={filtresActifs}
