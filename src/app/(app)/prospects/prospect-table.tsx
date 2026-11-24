@@ -104,7 +104,7 @@ export function ProspectTable({
   projetArchive = false,
 }: {
   prospects: Prospect[];
-  utilisateurs: User[];
+  utilisateurs: Pick<User, "id" | "name">[];
   peutReaffecter: boolean;
   fuseau?: string;
   total: number;

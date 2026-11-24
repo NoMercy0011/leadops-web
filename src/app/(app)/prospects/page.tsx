@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Archive, Columns3, Users } from "lucide-react";
@@ -15,7 +16,7 @@ import { getOptionsFiltres } from "@/lib/options";
 import { PaginationListe } from "@/components/pagination-liste";
 import { requireUser } from "@/lib/dal";
 import { listProspects } from "@/lib/prospects";
-import { listCompanyUsers, listProjects } from "@/lib/projects";
+import { getProject, listCompanyUsers, listProjects } from "@/lib/projects";
 
 export const metadata: Metadata = {
   title: "Prospects",
@@ -30,7 +31,7 @@ export default async function ProspectsPage({
   const projectId = Number(filtres.project_id) || undefined;
   const encadrement = user.role === "admin_client" || user.role === "manager";
 
-  const [prospects, projets, utilisateurs] = await Promise.all([
+  const [prospects, projets, utilisateurs, options, projetActif] = await Promise.all([
     listProspects({
       project_id: projectId,
       page: Math.max(1, Number.parseInt(String(filtres.page ?? "1"), 10) || 1),
@@ -47,26 +48,36 @@ export default async function ProspectsPage({
     listProjects(),
     // La liste des commerciaux ne sert qu'aux actions d'encadrement.
     encadrement ? listCompanyUsers() : Promise.resolve({ data: [], meta: { current_page: 1, last_page: 1, total: 0 } }),
+    // Les filtres et la réaffectation lisent tout le périmètre, sans la borne
+    // de 25 des listes paginées (lot 10, R2) ; les boîtes de création et
+    // d'import gardent les projets complets.
+    getOptionsFiltres(),
+    // Les étapes du filtre viennent du projet lui-même, et non de la liste
+    // paginée, où un 26e projet n'apparaît pas (revue du lot 10).
+    projectId ? getProject(projectId).catch(() => undefined) : Promise.resolve(undefined),
   ]);
-  // Les filtres et la réaffectation lisent tout le périmètre, sans la borne de
-  // 25 des listes paginées (lot 10, R2) ; les boîtes de création et d'import
-  // gardent les projets complets.
-  const options = await getOptionsFiltres();
-
-  const projetActif = projectId
-    ? projets.data.find((p) => p.id === projectId)
-    : undefined;
 
   const aucunProjet = projets.data.length === 0;
   const archives = filtres.archived === "1";
 
   // Les filtres courants, pour que les tuiles cliquables du résumé restreignent
   // la sélection au lieu de la remplacer.
+  // Sans `page` (revue du lot 10) : changer de filtre repart de la première
+  // page, faute de quoi la page 5 d'un nouveau filtre d'une seule page
+  // s'affichait vide.
   const filtresActifs = new URLSearchParams(
     Object.entries(filtres).flatMap(([cle, valeur]) =>
-      typeof valeur === "string" && valeur !== "" ? [[cle, valeur]] : [],
+      cle !== "page" && typeof valeur === "string" && valeur !== "" ? [[cle, valeur]] : [],
     ),
   );
+
+  // Une page au-delà de la dernière (`?page=999`) revient à la dernière
+  // (revue du lot 10) : l'écran tombait sur l'état vide, sans pagination.
+  if (prospects.data.length === 0 && prospects.meta.total > 0) {
+    const suivants = new URLSearchParams(filtresActifs);
+    suivants.set("page", String(prospects.meta.last_page));
+    redirect(`${"/prospects"}?${suivants.toString()}`);
+  }
 
   return (
     <div className="space-y-6">
@@ -143,7 +154,7 @@ export default async function ProspectsPage({
             <>
 <ProspectTable
               prospects={prospects.data}
-              utilisateurs={utilisateurs.data}
+              utilisateurs={options.users}
               peutReaffecter={encadrement}
               fuseau={user.company?.timezone}
               total={prospects.meta.total}
