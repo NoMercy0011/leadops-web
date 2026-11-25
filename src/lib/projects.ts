@@ -22,11 +22,12 @@ import type {
  */
 
 export async function listProjects(
-  params: { status?: string; variant_id?: number } = {},
+  params: { status?: string; variant_id?: number; page?: number } = {},
 ): Promise<Paginated<Project>> {
   const query = new URLSearchParams();
   if (params.status) query.set("status", params.status);
   if (params.variant_id) query.set("variant_id", String(params.variant_id));
+  if (params.page && params.page > 1) query.set("page", String(params.page));
 
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
 

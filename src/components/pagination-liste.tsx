@@ -6,6 +6,8 @@ import Link from "next/link";
  * La liste des prospects s'arrêtait à sa première page, sans moyen d'aller
  * plus loin. Les liens gardent tous les filtres de l'adresse et ne changent
  * que `page`.
+ *
+ * `unite` nomme ce qu'on compte : prospects, projets, entreprises (lot 11, R2).
  */
 export function PaginationListe({
   base,
@@ -13,12 +15,14 @@ export function PaginationListe({
   page,
   derniere,
   total,
+  unite = "prospects",
 }: {
   base: string;
   filtres: Record<string, string | string[] | undefined>;
   page: number;
   derniere: number;
   total: number;
+  unite?: string;
 }) {
   if (derniere <= 1) {
     return null;
@@ -48,7 +52,7 @@ export function PaginationListe({
         <span />
       )}
       <span>
-        Page {page} sur {derniere} · {total} prospects
+        Page {page} sur {derniere} · {total} {unite}
       </span>
       {page < derniere ? (
         <Link href={vers(page + 1)} className="hover:text-foreground underline">

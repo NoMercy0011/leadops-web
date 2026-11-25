@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Building2 } from "lucide-react";
 
 import { CreateCompanyDialog } from "./create-company-dialog";
 import { CompanyStatusBadge } from "@/components/company-status-badge";
 import { EmptyState } from "@/components/empty-state";
+import { PaginationListe } from "@/components/pagination-liste";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,9 @@ export const metadata: Metadata = {
   title: "Entreprises clientes",
 };
 
-export default async function EntreprisesPage() {
+export default async function EntreprisesPage({
+  searchParams,
+}: PageProps<"/back-office/entreprises">) {
   const user = await requireUser();
 
   // Deuxième garde, après le middleware Laravel : évite d'afficher une page
@@ -34,8 +37,17 @@ export default async function EntreprisesPage() {
     notFound();
   }
 
-  const [companies, plans] = await Promise.all([listCompanies(), listPlans()]);
+  const params = await searchParams;
+  // Page demandée (lot 11, R2) : toute valeur douteuse retombe sur la première.
+  const page = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+
+  const [companies, plans] = await Promise.all([listCompanies({ page }), listPlans()]);
   const total = companies.meta.total;
+
+  // Au-delà de la dernière page, retour à la dernière (lot 11, R2).
+  if (companies.data.length === 0 && total > 0) {
+    redirect(`/back-office/entreprises?page=${companies.meta.last_page}`);
+  }
 
   return (
     <div className="space-y-6">
@@ -119,6 +131,15 @@ export default async function EntreprisesPage() {
           </CardContent>
         </Card>
       )}
+
+      <PaginationListe
+        base="/back-office/entreprises"
+        filtres={params}
+        page={companies.meta.current_page}
+        derniere={companies.meta.last_page}
+        total={total}
+        unite="entreprises"
+      />
     </div>
   );
 }

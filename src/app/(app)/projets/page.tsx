@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Archive, FolderKanban } from "lucide-react";
 
 import { CreateProjectDialog } from "./create-project-dialog";
 import { EmptyState } from "@/components/empty-state";
+import { PaginationListe } from "@/components/pagination-liste";
 import { PageHeader } from "@/components/page-header";
 import { StageChip } from "@/components/stage-chip";
 import { StatusBadge, type Tone } from "@/components/status-badge";
@@ -38,13 +40,21 @@ export default async function ProjetsPage({
   // est le seul moyen de les revoir. C'est ce que fait cette bascule — sans
   // elle, archiver reviendrait à perdre le projet de vue pour de bon.
   const archives = params.status === "archived";
+  // Page demandée (lot 11, R2) : toute valeur douteuse retombe sur la première.
+  const page = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
 
   const [projets, variantes] = await Promise.all([
-    listProjects(archives ? { status: "archived" } : {}),
+    listProjects({ ...(archives ? { status: "archived" } : {}), page }),
     listVariants(),
   ]);
 
   const peutCreer = user.role === "admin_client";
+
+  // Une page au-delà de la dernière revient à la dernière, comme pour les
+  // prospects (lot 10) : sinon l'écran vide inviterait à créer un projet.
+  if (projets.data.length === 0 && projets.meta.total > 0) {
+    redirect(`/projets?${new URLSearchParams({ ...(archives ? { status: "archived" } : {}), page: String(projets.meta.last_page) }).toString()}`);
+  }
 
   return (
     <div className="space-y-6">
@@ -161,6 +171,15 @@ export default async function ProjetsPage({
           ))}
         </div>
       )}
+
+      <PaginationListe
+        base="/projets"
+        filtres={params}
+        page={projets.meta.current_page}
+        derniere={projets.meta.last_page}
+        total={projets.meta.total}
+        unite="projets"
+      />
 
       {variantes.length === 0 && peutCreer ? (
         <p className="text-muted-foreground text-sm">
