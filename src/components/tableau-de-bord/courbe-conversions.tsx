@@ -78,7 +78,10 @@ export function CourbeConversions({
     // Par semaine : en vue quotidienne, la série est regroupée ici.
     const semaines = new Map<string, { date: string; converted: number; lost: number }>();
     for (const p of serie) {
-      const cle = granularite === "week" ? p.date : lundi(p.date);
+      // Bornée au premier jour de la série (lot 12, rapport §5) : la première
+      // semaine, partielle, n'est pas datée du lundi qui précède la période.
+      const debut = serie[0]?.date ?? p.date;
+      const cle = granularite === "week" ? p.date : lundi(p.date) < debut ? debut : lundi(p.date);
       const s = semaines.get(cle) ?? { date: cle, converted: 0, lost: 0 };
       s.converted += p.converted;
       s.lost += p.lost;

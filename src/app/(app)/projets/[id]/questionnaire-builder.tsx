@@ -9,6 +9,7 @@ import {
   Pencil,
   Plus,
   Trash2,
+  Timer,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FieldGroup } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
+import { ecrireDuree } from "@/lib/duree";
 import { formatNombre } from "@/lib/format";
 import { resumeQuestionnaire } from "@/lib/qualification";
 import type { Question, QuestionType } from "@/lib/types";
@@ -144,6 +146,17 @@ function QuestionForm({
             }
           />
         ) : null}
+
+        <ChampTexte
+          id="planned_seconds"
+          label="Durée prévue"
+          placeholder="1:30"
+          optionnel
+          inputMode="numeric"
+          defaultValue={question?.planned_seconds ? ecrireDuree(question.planned_seconds) : ""}
+          // Lot 13, R1 : le temps de la question dans l'entretien guidé.
+          aide="Le temps que vous comptez y passer avec le prospect, en minutes:secondes."
+        />
 
         <div className="flex items-center gap-2">
           <Checkbox
@@ -319,6 +332,12 @@ export function QuestionnaireBuilder({
                     {question.required ? (
                       <StatusBadge tone="info" point={false}>
                         Obligatoire
+                      </StatusBadge>
+                    ) : null}
+                    {question.planned_seconds ? (
+                      <StatusBadge tone="neutral" point={false}>
+                        <Timer className="size-3" aria-hidden />
+                        {ecrireDuree(question.planned_seconds)}
                       </StatusBadge>
                     ) : null}
                     {question.has_answers ? (
