@@ -412,3 +412,41 @@
     background-image: var(--brand-gradient);
   }
 }
+
+/* Tableau de bord — lot 12, planche n°12 (revue du lot 12).
+   Apparitions en CSS plutôt qu'en JavaScript : le serveur rend l'état final,
+   la page reste lisible sans script ou avant l'hydratation, et la préférence
+   « réduire les animations » coupe tout, délais compris. Durée et courbe :
+   --duration-slow et --ease-brand ; barres : 600 ms. */
+@keyframes lo-apparition {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes lo-barre {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.lo-apparition {
+  animation: lo-apparition var(--duration-slow) var(--ease-brand) both;
+}
+
+.lo-barre {
+  transform-origin: left center;
+  animation: lo-barre 600ms var(--ease-brand) both;
+}
+
+.lo-barre-centre {
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lo-apparition,
+  .lo-barre {
+    animation: none;
+  }
+}
