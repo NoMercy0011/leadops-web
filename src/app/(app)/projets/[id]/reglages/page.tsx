@@ -110,7 +110,10 @@ export default async function ReglagesDuProjetPage({
           <CardTitle>Questionnaire</CardTitle>
           <CardDescription>
             Questions de qualification posées sur chaque prospect de ce projet.
-            Elles se configurent ici, sans déploiement.
+            Elles se configurent ici, sans déploiement.{" "}
+            <Link href={`/projets/${projet.id}/entretien`} className="text-foreground underline">
+              Préparer l&apos;entretien
+            </Link>
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -29,7 +29,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { ApiError } from "@/lib/api";
 import { requireUser } from "@/lib/dal";
-import { formatDate, formatDistance } from "@/lib/format";
+import { formatDate, formatDistance, formatHeure } from "@/lib/format";
+import { getCurrentInterview } from "@/lib/interviews";
 import { listUtilisateursOptions } from "@/lib/options";
 import { getProject } from "@/lib/projects";
 import { getProspect, listActivities } from "@/lib/prospects";
@@ -37,6 +38,10 @@ import { getQuestionnaire } from "@/lib/questionnaire";
 import { listAppointments } from "@/lib/appointments";
 import { AppointmentsPanel } from "./appointments-panel";
 import { QuestionnaireForm } from "./questionnaire-form";
+import { DemarrerEntretien } from "./demarrer-entretien";
+
+/** Une fiche effacée n'a plus d'entretien à proposer. */
+const efface0 = (p: { is_erased: boolean }) => p.is_erased;
 
 export const metadata: Metadata = {
   title: "Prospect",
@@ -44,6 +49,7 @@ export const metadata: Metadata = {
 
 export default async function FicheProspectPage({
   params,
+  searchParams,
 }: PageProps<"/prospects/[id]">) {
   const user = await requireUser();
   const { id } = await params;
@@ -68,7 +74,7 @@ export default async function FicheProspectPage({
 
   const encadrement = user.role === "admin_client" || user.role === "manager";
 
-  const [activites, projet, utilisateurs, questionnaire, rendezVous] = await Promise.all([
+  const [activites, projet, utilisateurs, questionnaire, rendezVous, entretien, recherche] = await Promise.all([
     listActivities(prospectId),
     // Le projet fournit le pipeline : la liste des étapes proposées doit être
     // celle de *son* projet, aucune autre.
@@ -80,7 +86,11 @@ export default async function FicheProspectPage({
     // Sans bornes de dates : la fiche montre tout l'historique du prospect,
     // passé comme à venir, là où le calendrier borne à une période.
     listAppointments({ prospect_id: prospectId }),
+    // Lot 13 : un entretien ouvert sur ce prospect, quel qu'en soit l'auteur.
+    efface0(prospect) ? Promise.resolve(null) : getCurrentInterview(prospectId),
+    searchParams,
   ]);
+  const monEntretien = entretien !== null && entretien.user?.id === user.id;
 
   const fuseau = user.company?.timezone;
   const relanceEnRetard =
@@ -131,6 +141,21 @@ export default async function FicheProspectPage({
               </StatusBadge>
             ) : null}
 
+            {/* Lot 13 : entretien guidé. Un entretien ouvert par un autre
+                utilisateur ne se démarre pas une seconde fois (décision n°5). */}
+            {entretien !== null && !monEntretien ? null : (
+              <DemarrerEntretien
+                prospectId={prospect.id}
+                reprendre={monEntretien}
+                raisonInactif={
+                  lectureSeule
+                    ? "Fiche en lecture seule : l'entretien ne peut pas être enregistré."
+                    : questionnaire.questions.length === 0
+                      ? "Ce projet n'a pas encore de questionnaire."
+                      : undefined
+                }
+              />
+            )}
             <EditProspectDialog prospect={prospect} lectureSeule={lectureSeule} />
 
             {/* Archiver relève de l'encadrement : sortir un dossier des
@@ -175,6 +200,25 @@ export default async function FicheProspectPage({
         <Notice variant="info" titre="Projet archivé — lecture seule">
           Le projet « {projet.name} » est archivé : ce prospect ne se modifie
           plus tant que le projet n&apos;est pas réactivé.
+        </Notice>
+      ) : null}
+
+      {recherche.entretien === "termine" ? (
+        <Notice variant="success" titre="Entretien enregistré">
+          Les réponses sont sur la fiche ; le journal garde la durée de l&apos;entretien.
+        </Notice>
+      ) : entretien !== null && !lectureSeule ? (
+        <Notice
+          variant="info"
+          titre={
+            monEntretien
+              ? `Entretien commencé à ${formatHeure(entretien.started_at, { timeZone: fuseau })}, non terminé`
+              : `Un entretien est en cours sur ce prospect (${entretien.user?.name ?? "un autre utilisateur"}, depuis ${formatHeure(entretien.started_at, { timeZone: fuseau })})`
+          }
+        >
+          {monEntretien
+            ? `${entretien.answered_count} réponse${entretien.answered_count > 1 ? "s" : ""} déjà enregistrée${entretien.answered_count > 1 ? "s" : ""}. « Reprendre l'entretien » repart de la dernière question.`
+            : "Il ne peut pas être démarré une seconde fois."}
         </Notice>
       ) : null}
 

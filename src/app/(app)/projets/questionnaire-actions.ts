@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 
 import { ApiError, apiFetch, idApi } from "@/lib/api";
+import { lireDuree } from "@/lib/duree";
 import type { QuestionType } from "@/lib/types";
+
+/** Lot 13 : durée saisie en minutes:secondes ; les bornes sont tenues par l'API. */
+const DUREE_ILLISIBLE = "Durée illisible : écrivez-la en minutes:secondes, par exemple 1:30.";
 
 export interface ActionState {
   message?: string;
@@ -51,9 +55,13 @@ export async function addQuestion(
   const required = formData.get("required") === "1";
   const help = String(formData.get("help") ?? "").trim();
   const options = decouperOptions(String(formData.get("options") ?? ""));
+  const duree = lireDuree(String(formData.get("planned_seconds") ?? ""));
 
   if (label === "") {
     return { message: "Le libellé de la question est obligatoire." };
+  }
+  if (duree === undefined) {
+    return { message: DUREE_ILLISIBLE };
   }
 
   try {
@@ -67,6 +75,7 @@ export async function addQuestion(
         // déjà, mais aucun écran ne permettait de le remplir : il restait
         // inatteignable.
         help: help === "" ? null : help,
+        planned_seconds: duree,
         ...(options.length > 0 ? { options } : {}),
       },
     });
@@ -103,9 +112,13 @@ export async function updateQuestion(
   const required = formData.get("required") === "1";
   const help = String(formData.get("help") ?? "").trim();
   const brutOptions = String(formData.get("options") ?? "").trim();
+  const duree = lireDuree(String(formData.get("planned_seconds") ?? ""));
 
   if (label === "") {
     return { message: "Le libellé de la question est obligatoire." };
+  }
+  if (duree === undefined) {
+    return { message: DUREE_ILLISIBLE };
   }
 
   const options = decouperOptions(brutOptions);
@@ -117,6 +130,7 @@ export async function updateQuestion(
         label,
         required,
         help: help === "" ? null : help,
+        planned_seconds: duree,
         // La clé n'est envoyée que pour les types à options : sur un champ
         // texte, transmettre un tableau vide ferait supprimer des options qui
         // n'existent pas et brouillerait la réponse de l'API.

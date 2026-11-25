@@ -265,6 +265,8 @@ export interface Question {
   label: string;
   help: string | null;
   required: boolean;
+  /** Durée prévue en secondes (lot 13, R1), `null` sans durée. */
+  planned_seconds?: number | null;
   position: number;
   multi_value: boolean;
   stored_as: "string" | "number" | "boolean" | "array";
