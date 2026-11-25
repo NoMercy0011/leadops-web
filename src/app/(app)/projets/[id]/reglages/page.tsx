@@ -12,13 +12,11 @@ import {
 } from "@/components/ui/card";
 import { requireUser } from "@/lib/dal";
 import { formatDate } from "@/lib/format";
-import { getProject, listCompanyUsers, listProjectActivities } from "@/lib/projects";
+import { listUtilisateursOptions } from "@/lib/options";
+import { getProject, listProjectActivities } from "@/lib/projects";
 import { listQuestions } from "@/lib/questionnaire";
 
-const AUCUN_UTILISATEUR = {
-  data: [],
-  meta: { current_page: 1, last_page: 1, total: 0 },
-};
+const AUCUN_UTILISATEUR = { data: [] };
 
 /**
  * Configuration du projet.
@@ -48,7 +46,7 @@ export default async function ReglagesDuProjetPage({
     getProject(projectId),
     listQuestions(projectId),
     // Les candidats ne servent qu'à qui peut modifier l'équipe.
-    editable ? listCompanyUsers() : Promise.resolve(AUCUN_UTILISATEUR),
+    editable ? listUtilisateursOptions() : Promise.resolve(AUCUN_UTILISATEUR),
     encadrement ? listProjectActivities(projectId, pageJournal) : Promise.resolve(null),
   ]);
 

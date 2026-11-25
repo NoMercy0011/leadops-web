@@ -6,12 +6,10 @@ import { ImportDialog } from "@/app/(app)/prospects/import-dialog";
 import { lienExportProspects } from "@/lib/export-prospects";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/dal";
-import { getProject, listCompanyUsers } from "@/lib/projects";
+import { listUtilisateursOptions } from "@/lib/options";
+import { getProject } from "@/lib/projects";
 
-const AUCUN_UTILISATEUR = {
-  data: [],
-  meta: { current_page: 1, last_page: 1, total: 0 },
-};
+const AUCUN_UTILISATEUR = { data: [] };
 
 /**
  * Actions propres à la section Prospects, remontées dans l'en-tête du projet.
@@ -24,7 +22,7 @@ const AUCUN_UTILISATEUR = {
  * faire. L'emplacement `@actions` renverse la charge : chaque section remplit
  * le sien, et ne coûte qu'à elle-même.
  *
- * `getProject` et `listCompanyUsers` sont mémoïsés le temps du rendu : la page
+ * `getProject` et `getOptionsFiltres` sont mémoïsés le temps du rendu : la page
  * de la section les réclame aussi, et l'appel n'a donc lieu qu'une fois.
  */
 export default async function ActionsProspects({
@@ -39,7 +37,7 @@ export default async function ActionsProspects({
 
   const [projet, utilisateurs] = await Promise.all([
     getProject(projectId),
-    encadrement ? listCompanyUsers() : Promise.resolve(AUCUN_UTILISATEUR),
+    encadrement ? listUtilisateursOptions() : Promise.resolve(AUCUN_UTILISATEUR),
   ]);
 
   const base = `/projets/${projectId}/prospects`;

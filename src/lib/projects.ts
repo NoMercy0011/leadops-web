@@ -60,21 +60,6 @@ export async function listVariants(): Promise<Variant[]> {
 }
 
 /**
- * Utilisateurs de l'entreprise, pour composer l'équipe d'un projet.
- *
- * L'API renvoie déjà la liste bornée au rôle de l'appelant : un Admin Client
- * voit toute son entreprise, ce qui est le cas d'usage ici.
- *
- * Mémoïsé le temps d'un rendu, comme `getProject` : la barre d'actions et la
- * page d'une même section la réclament toutes deux, et `apiFetch` passe
- * `cache: "no-store"` — sans cela, deux requêtes identiques partiraient à
- * chaque affichage.
- */
-export const listCompanyUsers = cache(async (): Promise<Paginated<User>> =>
-  apiFetch<Paginated<User>>("/users", { unwrap: false }),
-);
-
-/**
  * Santé du pipeline d'un projet.
  *
  * Point d'entrée distinct de la fiche : le calcul parcourt le journal

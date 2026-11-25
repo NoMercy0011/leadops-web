@@ -12,11 +12,11 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { lienExportProspects } from "@/lib/export-prospects";
-import { getOptionsFiltres } from "@/lib/options";
+import { getOptionsFiltres, listProjetsOuverts, listUtilisateursOptions } from "@/lib/options";
 import { PaginationListe } from "@/components/pagination-liste";
 import { requireUser } from "@/lib/dal";
 import { listProspects } from "@/lib/prospects";
-import { getProject, listCompanyUsers, listProjects } from "@/lib/projects";
+import { getProject } from "@/lib/projects";
 
 export const metadata: Metadata = {
   title: "Prospects",
@@ -45,12 +45,12 @@ export default async function ProspectsPage({
       // le seul moyen de les revoir.
       archived: filtres.archived === "1" ? "1" : undefined,
     }),
-    listProjects(),
+    // Création et import : tout le périmètre hors archivés (lot 11, R1).
+    listProjetsOuverts(),
     // La liste des commerciaux ne sert qu'aux actions d'encadrement.
-    encadrement ? listCompanyUsers() : Promise.resolve({ data: [], meta: { current_page: 1, last_page: 1, total: 0 } }),
-    // Les filtres et la réaffectation lisent tout le périmètre, sans la borne
-    // de 25 des listes paginées (lot 10, R2) ; les boîtes de création et
-    // d'import gardent les projets complets.
+    encadrement ? listUtilisateursOptions() : Promise.resolve({ data: [] }),
+    // Les filtres lisent tout le périmètre, sans la borne de 25 des listes
+    // paginées (lot 10, R2). Un seul appel à `/options`, mémoïsé.
     getOptionsFiltres(),
     // Les étapes du filtre viennent du projet lui-même, et non de la liste
     // paginée, où un 26e projet n'apparaît pas (revue du lot 10).

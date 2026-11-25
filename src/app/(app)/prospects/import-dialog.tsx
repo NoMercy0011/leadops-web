@@ -60,7 +60,7 @@ export function ImportDialog({
   taille = "default",
 }: {
   /** Destinations possibles. Ignoré si `projet` est fourni. */
-  projets?: Project[];
+  projets?: Pick<Project, "id" | "name">[];
   /** Destination imposée : le sélecteur laisse place à un champ caché. */
   projet?: Project;
   taille?: "default" | "sm";

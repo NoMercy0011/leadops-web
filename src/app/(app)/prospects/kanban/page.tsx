@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
 import { requireUser } from "@/lib/dal";
 import { listProspects } from "@/lib/prospects";
-import { getProject, listProjects } from "@/lib/projects";
+import { listProjetsOuverts } from "@/lib/options";
+import { getProject } from "@/lib/projects";
 
 export const metadata: Metadata = {
   title: "Kanban",
@@ -23,7 +24,7 @@ export default async function KanbanPage({
   const user = await requireUser();
   const params = await searchParams;
 
-  const projets = await listProjects();
+  const projets = await listProjetsOuverts();
 
   if (projets.data.length === 0) {
     return (

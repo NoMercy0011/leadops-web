@@ -30,7 +30,8 @@ import { Separator } from "@/components/ui/separator";
 import { ApiError } from "@/lib/api";
 import { requireUser } from "@/lib/dal";
 import { formatDate, formatDistance } from "@/lib/format";
-import { getProject, listCompanyUsers } from "@/lib/projects";
+import { listUtilisateursOptions } from "@/lib/options";
+import { getProject } from "@/lib/projects";
 import { getProspect, listActivities } from "@/lib/prospects";
 import { getQuestionnaire } from "@/lib/questionnaire";
 import { listAppointments } from "@/lib/appointments";
@@ -73,8 +74,8 @@ export default async function FicheProspectPage({
     // celle de *son* projet, aucune autre.
     getProject(prospect.project_id),
     encadrement
-      ? listCompanyUsers()
-      : Promise.resolve({ data: [], meta: { current_page: 1, last_page: 1, total: 0 } }),
+      ? listUtilisateursOptions()
+      : Promise.resolve({ data: [] }),
     getQuestionnaire(prospectId),
     // Sans bornes de dates : la fiche montre tout l'historique du prospect,
     // passé comme à venir, là où le calendrier borne à une période.

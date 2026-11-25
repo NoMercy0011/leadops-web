@@ -16,7 +16,7 @@ export function ProjectPicker({
   actif,
   parametres,
 }: {
-  projets: Project[];
+  projets: Pick<Project, "id" | "name">[];
   actif: number;
   parametres: URLSearchParams;
 }) {
