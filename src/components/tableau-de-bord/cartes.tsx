@@ -157,6 +157,7 @@ export function Entonnoir({ entonnoir }: { entonnoir: DashboardFunnel }) {
               ) : null}
               <BarreAnimee
                 largeur={Math.max((e.reached / max) * 100, 28)}
+                depuisCentre
                 className="flex h-[30px] items-center justify-between rounded-lg px-3 text-xs"
                 style={{ background: `color-mix(in srgb, var(--chart-1) ${melange}%, var(--card))` }}
               >
