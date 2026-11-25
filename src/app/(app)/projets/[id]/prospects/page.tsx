@@ -7,14 +7,11 @@ import { ProspectTable } from "@/app/(app)/prospects/prospect-table";
 import { EmptyState } from "@/components/empty-state";
 import { PaginationListe } from "@/components/pagination-liste";
 import { requireUser } from "@/lib/dal";
-import { getOptionsFiltres } from "@/lib/options";
-import { getProject, listCompanyUsers } from "@/lib/projects";
+import { getOptionsFiltres, listUtilisateursOptions } from "@/lib/options";
+import { getProject } from "@/lib/projects";
 import { listProspects } from "@/lib/prospects";
 
-const AUCUN_UTILISATEUR = {
-  data: [],
-  meta: { current_page: 1, last_page: 1, total: 0 },
-};
+const AUCUN_UTILISATEUR = { data: [] };
 
 /**
  * Prospects du projet.
@@ -51,7 +48,7 @@ export default async function ProspectsDuProjetPage({
       // le seul moyen de les revoir.
       archived: filtres.archived === "1" ? "1" : undefined,
     }),
-    encadrement ? listCompanyUsers() : Promise.resolve(AUCUN_UTILISATEUR),
+    encadrement ? listUtilisateursOptions() : Promise.resolve(AUCUN_UTILISATEUR),
   ]);
 
   const base = `/projets/${projectId}/prospects`;

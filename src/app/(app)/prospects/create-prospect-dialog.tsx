@@ -57,8 +57,8 @@ export function CreateProspectDialog({
   utilisateurs,
   taille = "default",
 }: {
-  projets: Project[];
-  utilisateurs: User[];
+  projets: Pick<Project, "id" | "name">[];
+  utilisateurs: Pick<User, "id" | "name">[];
   /**
    * Hauteur du déclencheur, comme sur `ImportDialog`.
    *

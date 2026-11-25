@@ -31,11 +31,12 @@ export interface CompanyUsage {
 }
 
 export async function listCompanies(
-  params: { search?: string; status?: string } = {},
+  params: { search?: string; status?: string; page?: number } = {},
 ): Promise<Paginated<Company>> {
   const query = new URLSearchParams();
   if (params.search) query.set("search", params.search);
   if (params.status) query.set("status", params.status);
+  if (params.page && params.page > 1) query.set("page", String(params.page));
 
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
 

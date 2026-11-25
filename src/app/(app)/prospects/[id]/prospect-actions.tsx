@@ -82,7 +82,7 @@ export function AssignSelector({
   editable,
 }: {
   prospect: Prospect;
-  utilisateurs: User[];
+  utilisateurs: Pick<User, "id" | "name">[];
   editable: boolean;
 }) {
   const { pending, executer } = useAction();

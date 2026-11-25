@@ -22,11 +22,12 @@ import type {
  */
 
 export async function listProjects(
-  params: { status?: string; variant_id?: number } = {},
+  params: { status?: string; variant_id?: number; page?: number } = {},
 ): Promise<Paginated<Project>> {
   const query = new URLSearchParams();
   if (params.status) query.set("status", params.status);
   if (params.variant_id) query.set("variant_id", String(params.variant_id));
+  if (params.page && params.page > 1) query.set("page", String(params.page));
 
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
 
@@ -58,21 +59,6 @@ export async function listStages(projectId: number): Promise<PipelineStage[]> {
 export async function listVariants(): Promise<Variant[]> {
   return apiFetch<Variant[]>("/variants");
 }
-
-/**
- * Utilisateurs de l'entreprise, pour composer l'équipe d'un projet.
- *
- * L'API renvoie déjà la liste bornée au rôle de l'appelant : un Admin Client
- * voit toute son entreprise, ce qui est le cas d'usage ici.
- *
- * Mémoïsé le temps d'un rendu, comme `getProject` : la barre d'actions et la
- * page d'une même section la réclament toutes deux, et `apiFetch` passe
- * `cache: "no-store"` — sans cela, deux requêtes identiques partiraient à
- * chaque affichage.
- */
-export const listCompanyUsers = cache(async (): Promise<Paginated<User>> =>
-  apiFetch<Paginated<User>>("/users", { unwrap: false }),
-);
 
 /**
  * Santé du pipeline d'un projet.

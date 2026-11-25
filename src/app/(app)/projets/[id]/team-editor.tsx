@@ -25,7 +25,7 @@ export function TeamEditor({
   editable,
 }: {
   projectId: number;
-  candidats: User[];
+  candidats: Pick<User, "id" | "name" | "role_label">[];
   membresInitiaux: number[];
   editable: boolean;
 }) {

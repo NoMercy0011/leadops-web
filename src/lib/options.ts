@@ -17,6 +17,7 @@ export interface OptionUtilisateur {
   id: number;
   name: string;
   role: UserRole;
+  role_label: string;
 }
 
 export interface OptionsFiltres {
@@ -34,3 +35,28 @@ export interface OptionsFiltres {
 export const getOptionsFiltres = cache(
   async (): Promise<OptionsFiltres> => apiFetch<OptionsFiltres>("/options"),
 );
+
+/**
+ * Utilisateurs proposés aux listes de choix — lot 11, règle R1.
+ *
+ * Réaffectation et équipe d'un projet lisaient `/users`, paginée par 25 : un
+ * 26e commercial ne pouvait être ni affecté ni rendu membre. Même enveloppe
+ * `{ data }` que la liste paginée, pour que les écrans n'aient rien d'autre à
+ * changer.
+ */
+export async function listUtilisateursOptions(): Promise<{ data: OptionUtilisateur[] }> {
+  return { data: (await getOptionsFiltres()).users };
+}
+
+/**
+ * Projets où l'on peut créer, importer ou faire glisser une carte — lot 11,
+ * règle R1.
+ *
+ * Les archivés sont écartés : l'API refuserait l'écriture (`archive.read_only`),
+ * et la liste paginée qu'ils remplacent les écartait déjà.
+ */
+export async function listProjetsOuverts(): Promise<{ data: OptionProjet[] }> {
+  return {
+    data: (await getOptionsFiltres()).projects.filter((p) => p.status !== "archived"),
+  };
+}
