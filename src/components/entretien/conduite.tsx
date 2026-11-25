@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Check, ChevronLeft, ChevronRight, Info, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -72,6 +73,8 @@ export function Conduite({
   const [mesures, setMesures] = useState<Record<number, number>>({});
   const [bilan, setBilan] = useState(false);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
+  const titreQuestion = useRef<HTMLParagraphElement>(null);
   // Entrée sur la question en cours, pour mesurer le temps qui y est passé.
   const [entree, setEntree] = useState(() => Date.now());
 
@@ -158,10 +161,41 @@ export function Conduite({
     });
   }, [entretien, noterTemps, prospectId, question, questions, simulation, valeurs]);
 
-  // Clavier : ← et → hors d'un champ de saisie, Ctrl + Entrée pour terminer.
+  /**
+   * Quitter en gardant la réponse affichée (revue du lot 13) : elle n'était
+   * enregistrée qu'en changeant de question, et le lien la perdait.
+   */
+  const quitter = useCallback(() => {
+    if (simulation || !entretien || !question) {
+      router.push(retour);
+      return;
+    }
+    startTransition(async () => {
+      const etat = await enregistrerReponse(entretien.id, question.id, valeurs[question.id] ?? null);
+      if (etat.erreurs || etat.message) {
+        setErreurs((e) => ({ ...e, ...(etat.erreurs ?? {}) }));
+        setMessage(etat.message ?? "La réponse en cours n'est pas valide : corrigez-la avant de quitter.");
+        return;
+      }
+      router.push(retour);
+    });
+  }, [entretien, question, retour, router, simulation, valeurs]);
+
+  // Le focus suit la question (revue du lot 13) : après ← ou →, il restait
+  // sur la page, et un lecteur d'écran n'annonçait rien.
+  useEffect(() => {
+    titreQuestion.current?.focus();
+  }, [index]);
+
+  // Clavier : ← et → hors d'un contrôle de saisie, Ctrl + Entrée pour
+  // terminer ; rien pendant un enregistrement (revue du lot 13), sinon deux
+  // envois partent et l'index saute.
   useEffect(() => {
     const touche = (e: KeyboardEvent) => {
-      const cibleSaisie = e.target instanceof HTMLElement && e.target.closest("input, textarea, select, [role=radiogroup]");
+      if (pending) return;
+      const cibleSaisie =
+        e.target instanceof HTMLElement &&
+        e.target.closest("input, textarea, select, button, [role=radiogroup], [role=combobox], [role=checkbox]");
       if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         terminer();
@@ -173,7 +207,7 @@ export function Conduite({
     };
     window.addEventListener("keydown", touche);
     return () => window.removeEventListener("keydown", touche);
-  }, [aller, index, terminer]);
+  }, [aller, index, pending, terminer]);
 
   if (bilan) {
     return <Bilan questions={questions} mesures={mesures} projectId={projectId} retour={retour} />;
@@ -204,8 +238,8 @@ export function Conduite({
           <p className="text-muted-foreground text-xs">{sousTitre}</p>
         </div>
         <div className="flex gap-2">
-          <Button asChild variant="ghost" size="sm">
-            <Link href={retour}>{simulation ? "Quitter la simulation" : "Mettre en pause et quitter"}</Link>
+          <Button variant="ghost" size="sm" onClick={quitter} disabled={pending}>
+            {simulation ? "Quitter la simulation" : "Mettre en pause et quitter"}
           </Button>
           <Button size="sm" onClick={terminer} disabled={pending}>
             {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
@@ -265,7 +299,7 @@ export function Conduite({
 
         <Card>
           <CardContent className="p-5">
-            <p className="text-muted-foreground text-xs">
+            <p ref={titreQuestion} tabIndex={-1} className="text-muted-foreground text-xs outline-none">
               Question {index + 1} sur {questions.length} · {question.type_label}
             </p>
             {cibleQ > 0 ? (
