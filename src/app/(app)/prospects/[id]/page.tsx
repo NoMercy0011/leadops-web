@@ -40,9 +40,6 @@ import { AppointmentsPanel } from "./appointments-panel";
 import { QuestionnaireForm } from "./questionnaire-form";
 import { DemarrerEntretien } from "./demarrer-entretien";
 
-/** Une fiche effacée n'a plus d'entretien à proposer. */
-const efface0 = (p: { is_erased: boolean }) => p.is_erased;
-
 export const metadata: Metadata = {
   title: "Prospect",
 };
@@ -87,7 +84,7 @@ export default async function FicheProspectPage({
     // passé comme à venir, là où le calendrier borne à une période.
     listAppointments({ prospect_id: prospectId }),
     // Lot 13 : un entretien ouvert sur ce prospect, quel qu'en soit l'auteur.
-    efface0(prospect) ? Promise.resolve(null) : getCurrentInterview(prospectId),
+    prospect.is_erased ? Promise.resolve(null) : getCurrentInterview(prospectId),
     searchParams,
   ]);
   const monEntretien = entretien !== null && entretien.user?.id === user.id;
